@@ -1,65 +1,152 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState, useEffect } from "react"
+import { useSession, signIn, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+
+export default function HomePage() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const [query, setQuery] = useState("")
+  const [faculty, setFaculty] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [importUrl, setImportUrl] = useState("")
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState("")
+
+  useEffect(() => {
+    fetchFaculty()
+  }, [query])
+
+  async function fetchFaculty() {
+    setLoading(true)
+    const res = await fetch(`/api/faculty?q=${encodeURIComponent(query)}`)
+    const data = await res.json()
+    setFaculty(data.faculty || [])
+    setLoading(false)
+  }
+
+  async function handleImport() {
+    if (!importUrl) return
+    setImporting(true)
+    setImportMsg("")
+    const res = await fetch("/api/import-faculty", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: importUrl }),
+    })
+    const data = await res.json()
+    if (data.facultyId) {
+      setImportMsg("✓ Faculty added successfully!")
+      setImportUrl("")
+      fetchFaculty()
+      router.push(`/faculty/${data.facultyId}`)
+    } else {
+      setImportMsg(`✗ ${data.error || "Failed to import"}`)
+    }
+    setImporting(false)
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-gray-950 text-white">
+      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Rate My Faculty</h1>
+          <p className="text-gray-400 text-xs">SRMIST — Anonymous faculty reviews</p>
+        </div>
+        {session ? (
+          <div className="flex items-center gap-3">
+            <span className="text-gray-400 text-sm">{session.user?.name}</span>
+            <button onClick={() => signOut()} className="text-gray-500 text-sm hover:text-white">Sign out</button>
+          </div>
+        ) : (
+          <button onClick={() => signIn("google")} className="bg-white text-gray-900 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100">
+            Sign in
+          </button>
+        )}
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-8 flex flex-col gap-6">
+        {/* Import box */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex flex-col gap-3">
+          <p className="text-sm font-medium text-gray-300">Add a faculty member</p>
+          <p className="text-xs text-gray-500">
+            Find them on{" "}
+            <a href="https://www.srmist.edu.in/staff-finder/" target="_blank" className="text-blue-400 underline">
+              SRMIST Staff Finder
+            </a>
+            , open their profile, copy the URL and paste below.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+          <div className="flex gap-2">
+            <input
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              placeholder="https://www.srmist.edu.in/faculty/dr-..."
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <button
+              onClick={handleImport}
+              disabled={importing}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg"
+            >
+              {importing ? "Importing..." : "Import"}
+            </button>
+          </div>
+          {importMsg && (
+            <p className={`text-xs ${importMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{importMsg}</p>
+          )}
         </div>
+
+        {/* Search */}
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name or department..."
+          className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        />
+
+        {/* Faculty list */}
+        {loading ? (
+          <p className="text-gray-500 text-sm text-center">Loading...</p>
+        ) : faculty.length === 0 ? (
+          <p className="text-gray-500 text-sm text-center">No faculty yet. Import one above to get started.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {faculty.map((f) => (
+              <Link
+                key={f.id}
+                href={`/faculty/${f.id}`}
+                className="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-xl p-4 flex items-center gap-4 transition"
+              >
+                {f.photoUrl ? (
+                  <img
+                    src={`/api/image-proxy?url=${encodeURIComponent(f.photoUrl)}`}
+                    alt={f.name}
+                    className="w-12 h-12 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-lg font-bold text-gray-300 shrink-0">
+                    {f.name?.charAt(0)}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-white truncate">{f.name}</p>
+                  <p className="text-gray-400 text-sm truncate">{f.department}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  {f.avgRating ? (
+                    <p className="text-yellow-400 font-bold">{f.avgRating} ★</p>
+                  ) : (
+                    <p className="text-gray-600 text-sm">No ratings</p>
+                  )}
+                  <p className="text-gray-500 text-xs">{f.ratingCount} review{f.ratingCount !== 1 ? "s" : ""}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
     </div>
-  );
+  )
 }
