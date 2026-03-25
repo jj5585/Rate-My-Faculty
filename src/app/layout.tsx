@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -12,6 +12,10 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  themeColor: "#030712",
+};
 
 export const metadata: Metadata = {
   title: "Rate My Faculty — SRMIST",
@@ -36,7 +40,6 @@ export const metadata: Metadata = {
     ],
     type: "website",
   },
-  themeColor: "#030712",
 };
 
 export default function RootLayout({
