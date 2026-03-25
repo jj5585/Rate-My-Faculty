@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Providers from "@/components/Providers"; // 👈 ADD THIS
+import Providers from "@/components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +14,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rate My Faculty",
-  description: "Rate professors anonymously",
+  title: "Rate My Faculty — SRMIST",
+  description: "Anonymous faculty reviews by SRMIST students. Rate your professors on teaching, approachability, fairness and more.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon-512.png",
+    apple: "/icon-512.png",
+  },
+  openGraph: {
+    title: "Rate My Faculty — SRMIST",
+    description: "Rate your professors anonymously. Honest reviews by real students.",
+    url: "https://rate-my-faculty.vercel.app",
+    siteName: "Rate My Faculty",
+    images: [
+      {
+        url: "https://rate-my-faculty.vercel.app/og-image.jpg",
+        width: 1080,
+        height: 1080,
+        alt: "Rate My Faculty",
+      },
+    ],
+    type: "website",
+  },
+  themeColor: "#030712",
 };
 
 export default function RootLayout({
@@ -29,7 +50,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers> {/* 👈 THIS IS THE FIX */}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
