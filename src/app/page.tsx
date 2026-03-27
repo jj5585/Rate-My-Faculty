@@ -50,24 +50,34 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-gray-800 px-4 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Rate My Faculty</h1>
           <p className="text-gray-400 text-xs">SRMIST — Anonymous faculty reviews</p>
         </div>
-        {session ? (
-          <div className="flex items-center gap-3">
-            <span className="text-gray-400 text-sm">{session.user?.name}</span>
-            <button onClick={() => signOut()} className="text-gray-500 text-sm hover:text-white">Sign out</button>
-          </div>
-        ) : (
-          <button onClick={() => signIn("google")} className="bg-white text-gray-900 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100">
-            Sign in
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <Link
+            href="/leaderboard"
+            className="bg-yellow-400 text-black text-xs font-bold px-3 py-2 rounded-lg hover:bg-yellow-300 transition"
+          >
+            🏆 Top Faculty
+          </Link>
+          {session ? (
+            <button onClick={() => signOut()} className="text-gray-500 text-sm hover:text-white">
+              Sign out
+            </button>
+          ) : (
+            <button
+              onClick={() => signIn("google")}
+              className="bg-white text-gray-900 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100"
+            >
+              Sign in
+            </button>
+          )}
+        </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <main className="max-w-3xl mx-auto px-4 py-6 flex flex-col gap-6">
         {/* Import box */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex flex-col gap-3">
           <p className="text-sm font-medium text-gray-300">Add a faculty member</p>
