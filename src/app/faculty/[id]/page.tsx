@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import ShareButton from "@/components/ShareButton";
 
 export default async function FacultyProfile({
   params,
@@ -34,7 +35,6 @@ export default async function FacultyProfile({
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Top nav */}
       <div className="px-4 pt-4 pb-2">
         <Link href="/" className="text-blue-400 text-sm flex items-center gap-1">
           ← Back
@@ -65,14 +65,15 @@ export default async function FacultyProfile({
         </div>
       </div>
 
-      {/* Rate button */}
-      <div className="mx-4 mt-3">
+      {/* Rate + Share buttons */}
+      <div className="mx-4 mt-3 flex gap-2">
         <Link
           href={`/rate/${faculty.id}`}
-          className="block w-full bg-white text-black text-center font-bold py-3 rounded-xl hover:bg-gray-200 transition"
+          className="flex-1 bg-white text-black text-center font-bold py-3 rounded-xl hover:bg-gray-200 transition"
         >
           Rate this Faculty
         </Link>
+        <ShareButton name={faculty.name} avgRating={overallAvg} />
       </div>
 
       {/* Stats grid */}
@@ -85,10 +86,7 @@ export default async function FacultyProfile({
           { label: "Non-Partiality", score: getAvg("partiality") },
           { label: "Behaviour", score: getAvg("behaviour") },
         ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-gray-900 border border-gray-800 p-4 rounded-xl text-center"
-          >
+          <div key={stat.label} className="bg-gray-900 border border-gray-800 p-4 rounded-xl text-center">
             <p className="text-gray-500 text-xs mb-1">{stat.label}</p>
             <p className="text-2xl font-bold">{stat.score}</p>
             <p className="text-gray-600 text-xs">/ 5</p>
@@ -101,16 +99,10 @@ export default async function FacultyProfile({
         <h2 className="text-lg font-bold">Student Feedback ({totalReviews})</h2>
 
         {faculty.ratings.length === 0 ? (
-          <p className="text-gray-600 italic text-sm">
-            No reviews yet. Be the first to add one!
-          </p>
+          <p className="text-gray-600 italic text-sm">No reviews yet. Be the first to add one!</p>
         ) : (
           faculty.ratings.map((r) => (
-            <div
-              key={r.id}
-              className="bg-gray-900 border border-gray-800 p-4 rounded-xl"
-            >
-              {/* Mini scores */}
+            <div key={r.id} className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {[
                   { label: "Teaching", val: r.teachingClarity },
