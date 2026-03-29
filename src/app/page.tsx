@@ -89,6 +89,9 @@ export default function HomePage() {
           <Link href="/today" className="text-purple-400 text-xs font-medium">
             💬 Today
           </Link>
+          <Link href="/incidents" className="text-red-400 text-xs font-medium">
+            🚨 Feed
+          </Link>
           {mounted && status !== "loading" && (
             session ? (
               <button onClick={() => signOut()} className="text-gray-500 text-sm hover:text-white">
