@@ -11,8 +11,8 @@ const CRITERIA = [
   { id: "approachability", label: "Approachability", desc: "Can you ask doubts without fear?" },
   { id: "gradingFairness", label: "Grading Fairness", desc: "Do they mark answers fairly?" },
   { id: "punctuality", label: "Punctuality", desc: "Do they arrive and leave on time?" },
-  { id: "partiality", label: "Not Partial", desc: "5 = Treats everyone equally, 1 = Very partial" },
-  { id: "behaviour", label: "Behaviour", desc: "Attitude towards students in class" },
+  { id: "partiality", label: "Not Partial", desc: "How equal is their treatment of students?" },
+  { id: "behaviour", label: "Behaviour", desc: "General attitude and vibe in class" },
 ];
 
 export default function RatePage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,25 +34,26 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">
-        Loading...
+      <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", color: "#71717a" }}>
+        Initialising Secure Review...
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white p-6">
-        <div className="text-center space-y-4 max-w-xs">
-          <h1 className="text-2xl font-bold">Sign in to Rate</h1>
-          <p className="text-gray-400 text-sm">
-            We use Google Sign-in to ensure 1 review per faculty per student.
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#0a0a0a", color: "#fff", padding: "24px" }}>
+        <div style={{ textAlign: "center", maxWidth: "320px", animation: "fadeIn 0.5s ease" }}>
+          <div style={{ fontSize: "40px", marginBottom: "20px" }}>🔒</div>
+          <h1 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px", letterSpacing: "-0.5px" }}>Verified Reviews Only</h1>
+          <p style={{ color: "#71717a", fontSize: "14px", lineHeight: "1.5", marginBottom: "32px" }}>
+            To prevent spam and ensure 1 review per faculty, please sign in with your SRM Google account.
           </p>
           <button
             onClick={() => signIn("google")}
-            className="w-full bg-white text-black px-8 py-3 rounded-xl font-bold"
+            style={{ width: "100%", backgroundColor: "#fff", color: "#000", padding: "16px", borderRadius: "16px", fontWeight: 700, border: "none", cursor: "pointer" }}
           >
-            Continue with Google
+            Sign in with Google
           </button>
         </div>
       </div>
@@ -61,14 +62,11 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Check all criteria are rated
     const unrated = CRITERIA.filter((c) => scores[c.id] === 0);
     if (unrated.length > 0) {
-      setError(`Please rate all criteria before submitting.`);
+      setError(`Please provide a score for all metrics.`);
       return;
     }
-
     setLoading(true);
     setError("");
 
@@ -78,10 +76,8 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ facultyId, ...scores, review }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit");
-
       router.push(`/faculty/${facultyId}`);
       router.refresh();
     } catch (err: any) {
@@ -91,83 +87,90 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-24">
+    <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5", fontFamily: "Inter, sans-serif", paddingBottom: "120px" }}>
       {/* Header */}
-      <div className="px-4 pt-4 pb-2">
-        <Link href={`/faculty/${facultyId}`} className="text-blue-400 text-sm">
-          ← Back
-        </Link>
-      </div>
+      <nav style={{ padding: "16px 20px", borderBottom: "1px solid #1f1f22", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, backgroundColor: "rgba(10,10,10,0.8)", backdropFilter: "blur(12px)", zIndex: 100 }}>
+        <Link href={`/faculty/${facultyId}`} style={{ color: "#71717a", textDecoration: "none", fontSize: "14px" }}>← Cancel</Link>
+        <span style={{ fontSize: "12px", fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "1px" }}>Anonymous Review</span>
+      </nav>
 
-      <div className="px-4 mb-6">
-        <h1 className="text-2xl font-bold">Rate this Faculty</h1>
-        <p className="text-gray-500 text-sm mt-1">Your review is fully anonymous.</p>
+      <div style={{ padding: "32px 20px" }}>
+        <h1 style={{ fontSize: "28px", fontWeight: 800, letterSpacing: "-1px", margin: "0 0 8px" }}>Rate Faculty</h1>
+        <p style={{ color: "#71717a", fontSize: "15px" }}>Be honest, be helpful, be fair.</p>
       </div>
 
       {error && (
-        <div className="mx-4 mb-4 bg-red-500/10 border border-red-500 text-red-400 p-3 rounded-xl text-sm">
-          {error}
+        <div style={{ margin: "0 20px 24px", padding: "16px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid #ef4444", borderRadius: "16px", color: "#ef4444", fontSize: "14px", fontWeight: 500 }}>
+          ⚠️ {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="px-4 space-y-4">
+      <form onSubmit={handleSubmit} style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
         {CRITERIA.map((item) => (
-          <div
-            key={item.id}
-            className="bg-gray-900 border border-gray-800 p-4 rounded-xl"
-          >
-            <div className="mb-3">
-              <h3 className="font-semibold text-base">{item.label}</h3>
-              <p className="text-gray-500 text-xs mt-0.5">{item.desc}</p>
+          <div key={item.id} style={{ backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "24px", padding: "20px" }}>
+            <div style={{ marginBottom: "20px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 700, margin: "0 0 4px" }}>{item.label}</h3>
+              <p style={{ fontSize: "12px", color: "#71717a", margin: 0 }}>{item.desc}</p>
             </div>
 
-            {/* Star-style tap buttons — full width, touch friendly */}
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => setScores({ ...scores, [item.id]: num })}
-                  className={`flex-1 py-3 rounded-lg font-bold text-base transition ${
-                    scores[item.id] >= num
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-800 text-gray-500"
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
+            <div style={{ display: "flex", gap: "8px" }}>
+              {[1, 2, 3, 4, 5].map((num) => {
+                const isActive = scores[item.id] === num;
+                const isSelected = scores[item.id] >= num;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setScores({ ...scores, [item.id]: num })}
+                    style={{
+                      flex: 1, height: "48px", borderRadius: "12px", border: "none", fontSize: "16px", fontWeight: 800, cursor: "pointer", transition: "all 0.2s",
+                      backgroundColor: isSelected ? "#ef4444" : "#18181b",
+                      color: isSelected ? "#fff" : "#3f3f46",
+                      boxShadow: isActive ? "0 0 15px rgba(239, 68, 68, 0.4)" : "none",
+                      transform: isActive ? "scale(1.05)" : "scale(1)"
+                    }}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
             </div>
-
-            {/* Label hints */}
-            <div className="flex justify-between mt-1 px-0.5">
-              <span className="text-gray-600 text-xs">Poor</span>
-              <span className="text-gray-600 text-xs">Excellent</span>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "12px", padding: "0 4px" }}>
+               <span style={{ fontSize: "10px", fontWeight: 700, color: "#3f3f46", textTransform: "uppercase" }}>Poor</span>
+               <span style={{ fontSize: "10px", fontWeight: 700, color: "#3f3f46", textTransform: "uppercase" }}>Excellent</span>
             </div>
           </div>
         ))}
 
-        {/* Written review */}
-        <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
-          <label className="font-semibold text-base block mb-2">
-            Written Review <span className="text-gray-500 font-normal text-sm">(optional)</span>
+        <div style={{ backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "24px", padding: "20px" }}>
+          <label style={{ fontSize: "16px", fontWeight: 700, display: "block", marginBottom: "12px" }}>
+            Written Review <span style={{ color: "#3f3f46", fontWeight: 400 }}>(Optional)</span>
           </label>
           <textarea
             value={review}
             onChange={(e) => setReview(e.target.value)}
-            placeholder="Share your experience in your own words..."
-            className="w-full h-28 bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+            placeholder="Help other students by describing the teaching style, marking, or attendance policy..."
+            style={{ width: "100%", height: "140px", backgroundColor: "#0a0a0a", border: "1px solid #27272a", borderRadius: "16px", color: "#fff", padding: "16px", fontSize: "14px", outline: "none", resize: "none", transition: "border-color 0.2s" }}
           />
         </div>
 
-        {/* Submit — fixed to bottom on mobile */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-950 border-t border-gray-800">
+        {/* Submit Action Area */}
+        <div style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, padding: "20px",
+          backgroundColor: "rgba(10, 10, 10, 0.8)", backdropFilter: "blur(20px)",
+          borderTop: "1px solid #1f1f22", zIndex: 100
+        }}>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-white text-black font-bold py-4 rounded-xl text-base hover:bg-gray-200 transition disabled:opacity-50"
+            style={{
+              width: "100%", maxWidth: "600px", margin: "0 auto", display: "block",
+              backgroundColor: "#fff", color: "#000", padding: "18px", borderRadius: "16px",
+              fontSize: "16px", fontWeight: 800, border: "none", cursor: "pointer",
+              transition: "all 0.2s", opacity: loading ? 0.5 : 1
+            }}
           >
-            {loading ? "Submitting..." : "Post Review"}
+            {loading ? "Posting Anonymously..." : "Publish Review"}
           </button>
         </div>
       </form>

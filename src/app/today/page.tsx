@@ -4,11 +4,11 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 
 const CRITERIA_LABELS: Record<string, string> = {
-  teachingClarity: "Teaching Clarity",
-  approachability: "Approachability",
-  gradingFairness: "Grading Fairness",
+  teachingClarity: "Teaching",
+  approachability: "Approach",
+  gradingFairness: "Grading",
   punctuality: "Punctuality",
-  partiality: "Non-Partiality",
+  partiality: "Fairness",
   behaviour: "Behaviour",
 }
 
@@ -20,29 +20,11 @@ function timeAgo(date: string) {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
-function overallScore(r: any) {
-  return ((r.teachingClarity + r.approachability + r.gradingFairness + r.punctuality + r.partiality + r.behaviour) / 6).toFixed(1)
-}
-
 function scoreColor(score: number) {
-  if (score >= 4.5) return "text-green-400"
-  if (score >= 3.5) return "text-yellow-400"
-  if (score >= 2.5) return "text-orange-400"
-  return "text-red-400"
-}
-
-function highlight(r: any) {
-  const scores = [
-    { key: "teachingClarity", val: r.teachingClarity },
-    { key: "approachability", val: r.approachability },
-    { key: "gradingFairness", val: r.gradingFairness },
-    { key: "punctuality", val: r.punctuality },
-    { key: "partiality", val: r.partiality },
-    { key: "behaviour", val: r.behaviour },
-  ]
-  const best = scores.reduce((a, b) => a.val >= b.val ? a : b)
-  const worst = scores.reduce((a, b) => a.val <= b.val ? a : b)
-  return { best, worst }
+  if (score >= 4.5) return "#00ff88"
+  if (score >= 3.5) return "#FFD700"
+  if (score >= 2.5) return "#FF8C00"
+  return "#ff4444"
 }
 
 export default function TodayPage() {
@@ -59,78 +41,113 @@ export default function TodayPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <header className="border-b border-gray-800 px-4 py-4 flex items-center justify-between">
+    <div style={{ 
+      minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5", 
+      fontFamily: "Inter, sans-serif", paddingBottom: "100px" 
+    }}>
+      {/* Header */}
+      <header style={{
+        padding: "24px 20px", borderBottom: "1px solid #1f1f22",
+        backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
+        position: "sticky", top: 0, zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center"
+      }}>
         <div>
-          <h1 className="text-xl font-bold">💬 Today's Reviews</h1>
-          <p className="text-gray-400 text-xs">Anonymous student voices — updated live</p>
+          <h1 style={{ fontSize: "20px", fontWeight: 800, letterSpacing: "-0.5px", margin: 0 }}>Today's Voices</h1>
+          <p style={{ fontSize: "11px", color: "#71717a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px" }}>
+            Live Student Feed
+          </p>
         </div>
-        <Link href="/" className="text-blue-400 text-sm">← Home</Link>
+        <Link href="/" style={{ fontSize: "13px", fontWeight: 600, color: "#ef4444", textDecoration: "none" }}>HOME</Link>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-4">
+      <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
         {loading ? (
-          <p className="text-gray-500 text-sm text-center mt-10">Loading...</p>
+          <div style={{ textAlign: "center", padding: "40px", color: "#3f3f46" }}>Syncing latest reviews...</div>
         ) : ratings.length === 0 ? (
-          <div className="text-center mt-16 space-y-3">
-            <p className="text-4xl">🌙</p>
-            <p className="text-gray-400">No reviews yet today.</p>
-            <p className="text-gray-600 text-sm">Check back later or be the first to review!</p>
-            <Link href="/" className="text-blue-400 text-sm underline">Browse faculty</Link>
+          <div style={{ textAlign: "center", marginTop: "60px", animation: "fadeIn 0.5s ease" }}>
+            <p style={{ fontSize: "48px", marginBottom: "16px" }}>🌙</p>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px" }}>The campus is quiet.</h2>
+            <p style={{ color: "#71717a", fontSize: "14px", marginBottom: "24px" }}>No reviews have been posted today yet.</p>
+            <Link href="/" style={{ backgroundColor: "#fff", color: "#000", padding: "12px 24px", borderRadius: "12px", textDecoration: "none", fontWeight: 700, fontSize: "14px" }}>
+              Be the first to review
+            </Link>
           </div>
         ) : (
-          <>
-            <p className="text-gray-600 text-xs text-right">{ratings.length} review{ratings.length !== 1 ? "s" : ""} today</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ textAlign: "right", paddingRight: "4px" }}>
+               <span style={{ fontSize: "10px", fontWeight: 800, color: "#3f3f46", letterSpacing: "1px" }}>
+                {ratings.length} RECENT UPDATES
+               </span>
+            </div>
+
             {ratings.map((r) => {
-              const overall = parseFloat(overallScore(r))
-              const { best, worst } = highlight(r)
+              const overall = ((r.teachingClarity + r.approachability + r.gradingFairness + r.punctuality + r.partiality + r.behaviour) / 6).toFixed(1);
+              const scoreNum = parseFloat(overall);
+              
               return (
-                <div key={r.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex flex-col gap-3">
-                  {/* Overall score + time */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-2xl font-black ${scoreColor(overall)}`}>{overall}</span>
-                      <span className="text-gray-600 text-xs">/ 5 overall</span>
+                <div key={r.id} style={{
+                  backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "24px", padding: "24px",
+                  animation: "fadeIn 0.4s ease"
+                }}>
+                  {/* Score & Meta */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                      <span style={{ fontSize: "32px", fontWeight: 900, color: scoreColor(scoreNum) }}>{overall}</span>
+                      <span style={{ fontSize: "12px", color: "#3f3f46", fontWeight: 700 }}>OVERALL</span>
                     </div>
-                    <span className="text-gray-600 text-xs">{timeAgo(r.createdAt)}</span>
+                    <span style={{ fontSize: "11px", color: "#3f3f46", fontWeight: 600 }}>{timeAgo(r.createdAt)}</span>
                   </div>
 
-                  {/* Review text */}
+                  {/* Review Text */}
                   {r.review && (
-                    <p className="text-gray-200 text-sm leading-relaxed italic">
+                    <p style={{ 
+                      fontSize: "15px", lineHeight: "1.6", color: "#d4d4d8", margin: "0 0 20px",
+                      padding: "16px", backgroundColor: "#0a0a0a", borderRadius: "16px", borderLeft: `3px solid ${scoreColor(scoreNum)}`
+                    }}>
                       "{r.review}"
                     </p>
                   )}
 
-                  {/* Best and worst */}
-                  <div className="flex gap-3">
-                    <div className="flex-1 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-                      <p className="text-green-400 text-xs font-medium">👍 Best</p>
-                      <p className="text-white text-xs mt-0.5">{CRITERIA_LABELS[best.key]} · {best.val}/5</p>
-                    </div>
-                    <div className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                      <p className="text-red-400 text-xs font-medium">👎 Needs work</p>
-                      <p className="text-white text-xs mt-0.5">{CRITERIA_LABELS[worst.key]} · {worst.val}/5</p>
-                    </div>
-                  </div>
-
-                  {/* All scores */}
-                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gray-800">
+                  {/* Grid of Scores */}
+                  <div style={{ 
+                    display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", 
+                    padding: "20px 0", borderTop: "1px solid #1f1f22", borderBottom: "1px solid #1f1f22",
+                    marginBottom: "16px"
+                  }}>
                     {Object.entries(CRITERIA_LABELS).map(([key, label]) => (
-                      <div key={key} className="text-center">
-                        <p className="text-gray-600 text-xs">{label.split(" ")[0]}</p>
-                        <p className="text-white text-sm font-bold">{r[key]}/5</p>
+                      <div key={key}>
+                        <p style={{ fontSize: "10px", color: "#3f3f46", fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>{label}</p>
+                        <p style={{ fontSize: "14px", fontWeight: 800, color: "#fff", margin: 0 }}>{r[key]}<span style={{ fontSize: "10px", color: "#3f3f46" }}>/5</span></p>
                       </div>
                     ))}
                   </div>
 
-                  <p className="text-gray-700 text-xs uppercase tracking-widest">Anonymous Student</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 800, color: "#1f1f22", letterSpacing: "2px" }}>VERIFIED ANONYMOUS</span>
+                    {/* Tiny visual indicator of the faculty being reviewed if available in data */}
+                    {r.faculty?.name && (
+                      <Link href={`/faculty/${r.faculty.id}`} style={{ fontSize: "11px", color: "#ef4444", fontWeight: 700, textDecoration: "none" }}>
+                        VIEW PROFILE →
+                      </Link>
+                    )}
+                  </div>
                 </div>
               )
             })}
-          </>
+          </div>
         )}
       </main>
+
+      {/* Floating Bottom Nav */}
+      <div style={{
+        position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)",
+        backgroundColor: "rgba(24, 24, 27, 0.8)", backdropFilter: "blur(20px)",
+        border: "1px solid #3f3f46", borderRadius: "30px", display: "flex", padding: "8px 12px", gap: "8px", zIndex: 1000
+      }}>
+        <Link href="/" style={{ padding: "8px 16px", borderRadius: "20px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px" }}>Home</Link>
+        <Link href="/today" style={{ padding: "8px 16px", borderRadius: "20px", color: "#fff", backgroundColor: "#ef4444", textDecoration: "none", fontSize: "13px" }}>Today</Link>
+        <Link href="/incidents" style={{ padding: "8px 16px", borderRadius: "20px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px" }}>Feed</Link>
+      </div>
     </div>
   )
 }

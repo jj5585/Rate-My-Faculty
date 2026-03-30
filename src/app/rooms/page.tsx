@@ -16,9 +16,29 @@ export default function RoomsPage() {
   const [error, setError] = useState("")
   const [created, setCreated] = useState<{ roomCode: string; password: string; name: string } | null>(null)
 
+  async function handleShare() {
+    if (!created) return;
+    const shareData = {
+      title: 'Gossip Room Invitation',
+      text: `Join the private room: ${created.name}\nRoom Code: ${created.roomCode}\nPassword: ${created.password}`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        alert("Credentials copied to clipboard!");
+      }
+    } catch (err) {
+      console.error("Error sharing:", err);
+    }
+  }
+
   async function handleJoin() {
-    if (!roomCode || !password) {
-      setError("Enter both room code and password")
+    if (roomCode.length < 4 || password.length < 4) {
+      setError("Please enter the full 4-digit credentials")
       return
     }
     setLoading(true)
@@ -30,173 +50,138 @@ export default function RoomsPage() {
     })
     const data = await res.json()
     if (data.room) {
-      // Store password in sessionStorage so chat page can use it
       sessionStorage.setItem(`room_${roomCode}`, password)
       router.push(`/rooms/${roomCode}`)
     } else {
-      setError(data.error || "Failed to join")
+      setError(data.error || "Invalid Credentials")
+      setLoading(false)
+    }
+  }
+
+  async function handleCreate() {
+    if (!roomName.trim()) {
+      setError("Enter a room name")
+      return
+    }
+    setLoading(true)
+    setError("")
+    try {
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: roomName }),
+      })
+      const data = await res.json()
+      if (data.room) {
+        sessionStorage.setItem(`room_${data.room.roomCode}`, data.room.password)
+        setCreated({ roomCode: data.room.roomCode, password: data.room.password, name: data.room.name })
+      } else {
+        setError(data.error || "Failed to create room")
+      }
+    } catch (e) {
+      setError("Server error")
     }
     setLoading(false)
   }
 
-  async function handleCreate() {
-  if (!roomName.trim()) {
-    setError("Enter a room name")
-    return
-  }
-  setLoading(true)
-  setError("")
-  try {
-    const res = await fetch("/api/rooms", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: roomName }),
-    })
-    const text = await res.text()
-    console.log("Response status:", res.status, "Body:", text)
-    const data = JSON.parse(text)
-    if (data.room) {
-      sessionStorage.setItem(`room_${data.room.roomCode}`, data.room.password)
-      setCreated({ roomCode: data.room.roomCode, password: data.room.password, name: data.room.name })
-    } else {
-      setError(data.error || "Failed to create room")
-    }
-  } catch (e) {
-    setError("Server error — check console")
-    console.error(e)
-  }
-  setLoading(false)
-}
-  if (status === "loading") {
-    return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">Loading...</div>
-  }
-
-  if (!session) {
+  if (!session && status !== "loading") {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white p-6">
-        <div className="text-center space-y-4 max-w-xs">
-          <p className="text-4xl">🔒</p>
-          <h1 className="text-xl font-bold">Sign in to use Gossip Rooms</h1>
-          <button onClick={() => signIn("google")} className="w-full bg-white text-black font-bold py-3 rounded-xl">
-            Continue with Google
+      <div style={{ minHeight: "100vh", backgroundColor: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", color: "#fff", fontFamily: "Inter, sans-serif" }}>
+        <div style={{ textAlign: "center", maxWidth: "300px" }}>
+          <h1 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "32px" }}>Gossip Rooms</h1>
+          <button onClick={() => signIn("google")} style={{ width: "100%", backgroundColor: "#fff", color: "#000", padding: "16px", borderRadius: "12px", fontWeight: 700, border: "none", cursor: "pointer" }}>
+            Sign in to Enter
           </button>
-          <Link href="/" className="block text-gray-500 text-sm">← Back</Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <header className="border-b border-gray-800 px-4 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">💬 Gossip Rooms</h1>
-          <p className="text-gray-400 text-xs">Private anonymous chat rooms</p>
-        </div>
-        <Link href="/" className="text-blue-400 text-sm">← Home</Link>
-      </header>
+    <div style={{ minHeight: "100vh", backgroundColor: "#000", color: "#fff", fontFamily: "Inter, sans-serif", display: "flex", flexDirection: "column" }}>
+      <nav style={{ padding: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Link href="/" style={{ color: "#3f3f46", textDecoration: "none", fontSize: "14px", fontWeight: 600 }}>← EXIT</Link>
+        <div style={{ height: "4px", width: "40px", backgroundColor: "#1f1f22", borderRadius: "2px" }} />
+        <div style={{ width: "40px" }} />
+      </nav>
 
-      <main className="max-w-md mx-auto px-4 py-8 flex flex-col gap-6">
-        {/* Created room success */}
-        {created && (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-5 flex flex-col gap-3">
-            <p className="text-green-400 font-bold">✓ Room created!</p>
-            <p className="text-white font-medium">{created.name}</p>
-            <div className="flex gap-3">
-              <div className="flex-1 bg-gray-800 rounded-xl p-3 text-center">
-                <p className="text-gray-500 text-xs mb-1">Room Code</p>
-                <p className="text-2xl font-black text-white tracking-widest">{created.roomCode}</p>
-              </div>
-              <div className="flex-1 bg-gray-800 rounded-xl p-3 text-center">
-                <p className="text-gray-500 text-xs mb-1">Password</p>
-                <p className="text-2xl font-black text-white tracking-widest">{created.password}</p>
-              </div>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px" }}>
+        
+        {created ? (
+          <div style={{ backgroundColor: "#111113", border: "1px solid #10b981", borderRadius: "24px", padding: "32px 24px", width: "100%", maxWidth: "340px", textAlign: "center", animation: "fadeIn 0.5s ease" }}>
+            <div style={{ width: "48px", height: "48px", backgroundColor: "rgba(16, 185, 129, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#10b981" }}>✓</div>
+            <h3 style={{ color: "#71717a", fontSize: "11px", fontWeight: 800, letterSpacing: "1px", marginBottom: "4px" }}>ROOM INITIALIZED</h3>
+            <p style={{ fontSize: "20px", fontWeight: 700, marginBottom: "32px" }}>{created.name}</p>
+            
+            <div style={{ display: "flex", gap: "12px", marginBottom: "32px" }}>
+                <div style={{ flex: 1, background: "#000", padding: "16px 12px", borderRadius: "16px", border: "1px solid #1f1f22" }}>
+                    <p style={{ fontSize: "9px", color: "#3f3f46", fontWeight: 800, marginBottom: "8px" }}>CODE</p>
+                    <p style={{ fontSize: "22px", fontWeight: 900, letterSpacing: "2px" }}>{created.roomCode}</p>
+                </div>
+                <div style={{ flex: 1, background: "#000", padding: "16px 12px", borderRadius: "16px", border: "1px solid #1f1f22" }}>
+                    <p style={{ fontSize: "9px", color: "#3f3f46", fontWeight: 800, marginBottom: "8px" }}>PASS</p>
+                    <p style={{ fontSize: "22px", fontWeight: 900, letterSpacing: "2px" }}>{created.password}</p>
+                </div>
             </div>
-            <p className="text-gray-500 text-xs">Share these with your friends to join</p>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(`Join my gossip room on Rate My Faculty!\nRoom Code: ${created.roomCode}\nPassword: ${created.password}\nhttps://rate-my-faculty.vercel.app/rooms`)
-                alert("Copied to clipboard!")
-              }}
-              className="w-full border border-gray-700 text-gray-300 py-2 rounded-xl text-sm"
-            >
-              📋 Copy invite
-            </button>
-            <button
-              onClick={() => router.push(`/rooms/${created.roomCode}`)}
-              className="w-full bg-white text-black font-bold py-3 rounded-xl"
-            >
-              Enter Room →
-            </button>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <button onClick={() => router.push(`/rooms/${created.roomCode}`)} style={{ width: "100%", backgroundColor: "#fff", color: "#000", padding: "16px", borderRadius: "14px", fontWeight: 800, border: "none", cursor: "pointer" }}>ENTER ROOM</button>
+                <button onClick={handleShare} style={{ width: "100%", backgroundColor: "transparent", color: "#71717a", padding: "12px", borderRadius: "14px", fontWeight: 600, border: "1px solid #1f1f22", fontSize: "13px", cursor: "pointer" }}>SHARE ACCESS</button>
+            </div>
           </div>
-        )}
-
-        {/* Tabs */}
-        {!created && (
+        ) : (
           <>
-            <div className="flex bg-gray-900 rounded-xl p-1">
-              <button
-                onClick={() => { setTab("join"); setError("") }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${tab === "join" ? "bg-white text-black" : "text-gray-400"}`}
-              >
-                Join a Room
+            <div style={{ display: "flex", gap: "24px", marginBottom: "60px", marginTop: "20px" }}>
+              <button onClick={() => { setTab("join"); setError(""); }} style={{ background: "none", border: "none", fontSize: "14px", fontWeight: 800, cursor: "pointer", color: tab === "join" ? "#fff" : "#27272a", transition: "0.2s" }}>
+                JOIN ROOM
+                {tab === "join" && <div style={{ height: "2px", backgroundColor: "#ef4444", marginTop: "4px" }} />}
               </button>
-              <button
-                onClick={() => { setTab("create"); setError("") }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${tab === "create" ? "bg-white text-black" : "text-gray-400"}`}
-              >
-                Create Room
+              <button onClick={() => { setTab("create"); setError(""); }} style={{ background: "none", border: "none", fontSize: "14px", fontWeight: 800, cursor: "pointer", color: tab === "create" ? "#fff" : "#27272a", transition: "0.2s" }}>
+                CREATE NEW
+                {tab === "create" && <div style={{ height: "2px", backgroundColor: "#ef4444", marginTop: "4px" }} />}
               </button>
             </div>
 
-            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-
-            {tab === "join" && (
-              <div className="flex flex-col gap-3">
-                <input
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  placeholder="Room Code (4 digits)"
-                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest placeholder-gray-600 focus:outline-none focus:border-blue-500"
-                  maxLength={4}
-                />
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  placeholder="Password (4 digits)"
-                  type="password"
-                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest placeholder-gray-600 focus:outline-none focus:border-blue-500"
-                  maxLength={4}
-                />
-                <button
-                  onClick={handleJoin}
-                  disabled={loading}
-                  className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-gray-200 transition disabled:opacity-50"
-                >
-                  {loading ? "Joining..." : "Join Room →"}
-                </button>
-              </div>
-            )}
-
-            {tab === "create" && (
-              <div className="flex flex-col gap-3">
-                <input
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                  placeholder="Room name (e.g. CSE Batch 2023)"
-                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                  maxLength={50}
-                />
-                <p className="text-gray-600 text-xs">A 4-digit room code and password will be generated automatically.</p>
-                <button
-                  onClick={handleCreate}
-                  disabled={loading}
-                  className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-gray-200 transition disabled:opacity-50"
-                >
-                  {loading ? "Creating..." : "Create Room"}
-                </button>
-              </div>
-            )}
+            <div style={{ width: "100%", maxWidth: "340px", textAlign: "center" }}>
+              {tab === "join" ? (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  <h2 style={{ fontSize: "12px", color: "#71717a", letterSpacing: "2px", marginBottom: "40px" }}>ENTER AUTHENTICATION</h2>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+                    <input
+                      value={roomCode}
+                      onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="0000"
+                      style={{ width: "100%", background: "none", border: "none", borderBottom: "1px solid #1f1f22", color: "#fff", fontSize: "42px", fontWeight: 900, textAlign: "center", letterSpacing: "12px", outline: "none" }}
+                    />
+                    <input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="••••"
+                      type="password"
+                      style={{ width: "100%", background: "none", border: "none", borderBottom: "1px solid #1f1f22", color: "#fff", fontSize: "42px", fontWeight: 900, textAlign: "center", letterSpacing: "12px", outline: "none" }}
+                    />
+                  </div>
+                  {error && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: "32px", fontWeight: 600 }}>{error}</p>}
+                  <button onClick={handleJoin} disabled={loading} style={{ marginTop: "60px", width: "100%", backgroundColor: roomCode.length === 4 && password.length === 4 ? "#fff" : "#111", color: "#000", padding: "18px", borderRadius: "14px", fontWeight: 800, border: "none", cursor: "pointer", transition: "0.3s" }}>
+                    {loading ? "VERIFYING..." : "ACCESS ROOM"}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  <h2 style={{ fontSize: "12px", color: "#71717a", letterSpacing: "2px", marginBottom: "40px" }}>INITIALIZE PRIVATE SPACE</h2>
+                  <input
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                    placeholder="Room Identity"
+                    style={{ width: "100%", background: "none", border: "none", borderBottom: "1px solid #1f1f22", color: "#fff", fontSize: "20px", fontWeight: 700, textAlign: "center", outline: "none" }}
+                  />
+                  {error && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: "32px" }}>{error}</p>}
+                  <button onClick={handleCreate} disabled={loading || !roomName} style={{ marginTop: "60px", width: "100%", backgroundColor: roomName ? "#ef4444" : "#111", color: "#fff", padding: "18px", borderRadius: "14px", fontWeight: 800, border: "none", cursor: "pointer", transition: "0.3s" }}>
+                    {loading ? "GENERATING..." : "CREATE ROOM"}
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </main>
