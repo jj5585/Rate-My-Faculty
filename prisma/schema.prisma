@@ -98,3 +98,22 @@ model IncidentReport {
   reportHash String   @unique
   createdAt  DateTime @default(now())
 }
+
+model GossipRoom {
+  id          String         @id @default(cuid())
+  name        String
+  roomCode    String         @unique
+  password    String
+  creatorHash String
+  createdAt   DateTime       @default(now())
+  messages    GossipMessage[]
+}
+
+model GossipMessage {
+  id        String      @id @default(cuid())
+  roomId    String
+  room      GossipRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  content   String
+  userHash  String
+  createdAt DateTime    @default(now())
+}

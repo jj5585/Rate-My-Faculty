@@ -92,6 +92,9 @@ export default function HomePage() {
           <Link href="/incidents" className="text-red-400 text-xs font-medium">
             🚨 Feed
           </Link>
+          <Link href="/rooms" className="text-green-400 text-xs font-medium">
+            🏠 Rooms
+          </Link>
           {mounted && status !== "loading" && (
             session ? (
               <button onClick={() => signOut()} className="text-gray-500 text-sm hover:text-white">
