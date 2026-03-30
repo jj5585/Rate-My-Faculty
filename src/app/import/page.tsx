@@ -65,7 +65,7 @@ export default function ImportPage() {
       }}>
         <div style={{ 
           width: "100%", 
-          maxWdth: "450px",
+          maxWidth: "450px", // FIXED: Changed maxWdth to maxWidth
           animation: "fadeIn 0.5s ease-out" 
         }}>
           {/* Hero Header */}
