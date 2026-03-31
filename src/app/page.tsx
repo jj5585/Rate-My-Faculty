@@ -29,7 +29,6 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/faculty")
       const data = await res.json()
-      // Ensure we only store valid faculty data
       setAllFaculty(data.faculty || [])
     } catch (e) {
       console.error(e)
@@ -61,38 +60,28 @@ export default function HomePage() {
 
   const isFiltering = query.trim().length > 0 || selectedStars !== null || showRedFlags
 
-  // 1. Filter Logic
   const filteredFaculty = allFaculty.filter((f) => {
     const q = query.toLowerCase()
     const matchesSearch = f.name?.toLowerCase().includes(q) || f.department?.toLowerCase().includes(q)
     const rating = parseFloat(f.avgRating || "0")
-    
     const matchesStars = selectedStars === null || (rating >= selectedStars && rating < selectedStars + 1)
     const matchesRedFlag = !showRedFlags || (rating > 0 && rating < 2.5)
-    
     return matchesSearch && matchesStars && matchesRedFlag
   })
 
-  // 2. STRICT SORTING LOGIC
   const sortedFaculty = [...filteredFaculty].sort((a, b) => {
     const ratingA = parseFloat(a.avgRating || "0")
     const ratingB = parseFloat(b.avgRating || "0")
     const reviewsA = a.ratingCount || 0
     const reviewsB = b.ratingCount || 0
-
     if (showRedFlags) {
-      // If Red Flags: Lowest rating first
       if (ratingA !== ratingB) return ratingA - ratingB
-      return reviewsB - reviewsA // More reviews on a bad rating makes it a bigger red flag
+      return reviewsB - reviewsA 
     }
-
-    // Default: Highest rating first
     if (ratingA !== ratingB) return ratingB - ratingA
-    // Tie-breaker: If ratings are same, show the one with more reviews first
     return reviewsB - reviewsA
   })
 
-  // 3. Display Logic
   const displayList = isFiltering ? sortedFaculty : sortedFaculty.slice(0, 50)
 
   const getRatingStyle = (avg: string) => {
@@ -108,12 +97,13 @@ export default function HomePage() {
       minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5",
       fontFamily: "Inter, -apple-system, sans-serif", paddingBottom: "120px"
     }}>
-      <style>{`
+      {/* SOLUTION: Define styles as a string variable outside the render or use standard CSS */}
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.4s ease forwards; }
-        input:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); }
+        input:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); outline: none; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-      `}</style>
+      `}} />
 
       <nav style={{
         backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
