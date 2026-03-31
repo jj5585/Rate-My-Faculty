@@ -8,7 +8,7 @@ import Link from "next/link"
 export default function HomePage() {
   const { data: session } = useSession()
   const router = useRouter()
-
+  const [mounted, setMounted] = useState(false)
   const [query, setQuery] = useState("")
   const [selectedStars, setSelectedStars] = useState<number | null>(null)
   const [showRedFlags, setShowRedFlags] = useState(false)
@@ -20,6 +20,7 @@ export default function HomePage() {
   const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     fetchFaculty()
   }, [])
 
@@ -91,140 +92,151 @@ export default function HomePage() {
       minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5",
       fontFamily: "Inter, -apple-system, sans-serif", paddingBottom: "120px"
     }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.4s ease forwards; }
-        input:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); outline: none; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-      `}} />
+      {/* FIX: We render the outer div always. 
+         We only render the content inside if mounted.
+      */}
+      {mounted ? (
+        <div className="fade-in">
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            .fade-in { animation: fadeIn 0.4s ease forwards; }
+            input:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); outline: none; }
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+          `}} />
 
-      <nav style={{
-        backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
-        padding: "0 24px", height: "64px", display: "flex", alignItems: "center",
-        justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #27272a"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{ background: "linear-gradient(135deg, #ef4444, #991b1b)", width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "14px" }}>R</div>
-          <span style={{ fontWeight: 700, letterSpacing: "-0.5px", fontSize: "18px" }}>RateMyFaculty</span>
-        </div>
-        
-        <div style={{ minWidth: "80px", display: "flex", justifyContent: "flex-end" }}>
-          <button 
-            onClick={() => (session ? signOut() : signIn("google"))}
-            style={{ fontSize: "13px", fontWeight: 500, padding: "8px 16px", borderRadius: "20px", backgroundColor: session ? "transparent" : "#fff", color: session ? "#a1a1aa" : "#000", border: session ? "1px solid #27272a" : "none", cursor: "pointer" }}
-          >
-            {session ? "Sign Out" : "Sign In"}
-          </button>
-        </div>
-      </nav>
-
-      <div style={{ padding: "60px 24px 20px", textAlign: "center" }}>
-        <h1 style={{ fontSize: "clamp(36px, 8vw, 72px)", fontWeight: 800, letterSpacing: "-0.04em", marginBottom: "16px", background: "linear-gradient(to bottom, #ffffff, #a1a1aa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          SRMIST <br/>
-          <span style={{ color: "#ef4444", WebkitTextFillColor: "initial" }}>Faculty Database.</span>
-        </h1>
-
-        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name or department..."
-            style={{ width: "100%", backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "14px", color: "white", padding: "16px 20px", fontSize: "16px", outline: "none" }}
-          />
-        </div>
-
-        <div className="hide-scrollbar" style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "20px", overflowX: "auto", paddingBottom: "10px" }}>
-          <button 
-            onClick={() => {setSelectedStars(null); setShowRedFlags(false);}}
-            style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: (!selectedStars && !showRedFlags) ? "#ef4444" : "#27272a", backgroundColor: (!selectedStars && !showRedFlags) ? "rgba(239, 68, 68, 0.1)" : "transparent", color: (!selectedStars && !showRedFlags) ? "#ef4444" : "#71717a", cursor: "pointer" }}
-          >
-            TOP 50
-          </button>
-          <button 
-            onClick={() => {setShowRedFlags(!showRedFlags); setSelectedStars(null);}}
-            style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: showRedFlags ? "#ef4444" : "#27272a", backgroundColor: showRedFlags ? "rgba(239, 68, 68, 0.2)" : "transparent", color: showRedFlags ? "#fff" : "#ff4444", cursor: "pointer", boxShadow: showRedFlags ? "0 0 15px rgba(239, 68, 68, 0.3)" : "none" }}
-          >
-            🚩 RED FLAGS
-          </button>
-          {[4, 3, 2, 1].map((star) => (
-            <button 
-              key={star}
-              onClick={() => {setSelectedStars(selectedStars === star ? null : star); setShowRedFlags(false);}}
-              style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: selectedStars === star ? "#ef4444" : "#27272a", backgroundColor: selectedStars === star ? "rgba(239, 68, 68, 0.1)" : "transparent", color: selectedStars === star ? "#ef4444" : "#71717a", cursor: "pointer", whiteSpace: "nowrap" }}
-            >
-              {star} STAR{star > 1 ? 'S' : ''}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h2 style={{ fontSize: "11px", fontWeight: 800, color: showRedFlags ? "#ef4444" : "#3f3f46", textTransform: "uppercase", letterSpacing: "1.5px" }}>
-            {showRedFlags ? "CRITICAL: LOW RATED FACULTY" : isFiltering ? `MATCHING RESULTS (${displayList.length})` : "TOP 50 FACULTY MEMBERS"}
-          </h2>
-          <button onClick={() => setShowImport(!showImport)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: 700 }}>
-            {showImport ? "CLOSE" : "+ IMPORT PROFILE"}
-          </button>
-        </div>
-
-        {showImport && (
-          <div className="fade-in" style={{ backgroundColor: "#111113", border: "1px solid #27272a", borderRadius: "16px", padding: "20px", marginBottom: "24px" }}>
-             <div style={{ display: "flex", gap: "10px" }}>
-                <input value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="SRM Profile URL..." style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #27272a", backgroundColor: "#000", color: "white", fontSize: "13px" }} />
-                <button onClick={handleImport} disabled={importing} style={{ backgroundColor: "#ef4444", color: "white", border: "none", padding: "0 20px", borderRadius: "10px", fontWeight: 700 }}>{importing ? "..." : "GO"}</button>
-             </div>
-             {importMsg && <p style={{ marginTop: "10px", fontSize: "12px", color: importMsg.includes("✓") ? "#10b981" : "#ef4444" }}>{importMsg}</p>}
-          </div>
-        )}
-
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "40px" }}>
-             <div style={{ width: "30px", height: "30px", border: "2px solid #27272a", borderTopColor: "#ef4444", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto" }} />
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {displayList.map((f) => {
-              const ratingStyle = getRatingStyle(f.avgRating);
-              return (
-                <Link key={f.id} href={`/faculty/${f.id}`} className="fade-in" style={{ display: "flex", alignItems: "center", padding: "16px", backgroundColor: "#111113", border: showRedFlags ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #1f1f22", borderRadius: "16px", textDecoration: "none" }}>
-                  <div style={{ marginRight: "16px" }}>
-                    {f.photoUrl ? (
-                      <img src={`/api/image-proxy?url=${encodeURIComponent(f.photoUrl)}`} style={{ width: "48px", height: "48px", borderRadius: "12px", objectFit: "cover" }} />
-                    ) : (
-                      <div style={{ width: "48px", height: "48px", borderRadius: "12px", backgroundColor: "#27272a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800 }}>{f.name?.[0]}</div>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</h3>
-                    <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#71717a" }}>{f.department}</p>
-                  </div>
-                  <div style={{ textAlign: "right", marginLeft: "12px" }}>
-                    <div style={{ backgroundColor: ratingStyle.bg, color: ratingStyle.color, padding: "6px 12px", borderRadius: "10px", fontWeight: 800, fontSize: "18px" }}>{f.avgRating}</div>
-                    <p style={{ margin: "4px 0 0", fontSize: "10px", color: "#3f3f46", fontWeight: 700 }}>{f.ratingCount} REVIEWS</p>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <div style={{ position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)", backgroundColor: "rgba(24, 24, 27, 0.8)", backdropFilter: "blur(20px)", border: "1px solid #3f3f46", borderRadius: "30px", display: "flex", padding: "8px 12px", gap: "8px", zIndex: 1000 }}>
-        {[
-          { href: "/", label: "Home" },
-          { href: "/today", label: "Today" },
-          { href: "/incidents", label: "Feed" },
-          { href: "/rooms", label: "Rooms" },
-        ].map((item) => (
-          <Link key={item.label} href={item.href} style={{
-            padding: "8px 16px", borderRadius: "20px", color: item.href === "/" ? "#fff" : "#a1a1aa",
-            backgroundColor: item.href === "/" ? "#ef4444" : "transparent", textDecoration: "none", fontSize: "13px", fontWeight: 600
+          <nav style={{
+            backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
+            padding: "0 24px", height: "64px", display: "flex", alignItems: "center",
+            justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #27272a"
           }}>
-            {item.label}
-          </Link>
-        ))}
-      </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ background: "linear-gradient(135deg, #ef4444, #991b1b)", width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "14px" }}>R</div>
+              <span style={{ fontWeight: 700, letterSpacing: "-0.5px", fontSize: "18px" }}>RateMyFaculty</span>
+            </div>
+            
+            <div style={{ minWidth: "80px", display: "flex", justifyContent: "flex-end" }}>
+              <button 
+                onClick={() => (session ? signOut() : signIn("google"))}
+                style={{ fontSize: "13px", fontWeight: 500, padding: "8px 16px", borderRadius: "20px", backgroundColor: session ? "transparent" : "#fff", color: session ? "#a1a1aa" : "#000", border: session ? "1px solid #27272a" : "none", cursor: "pointer" }}
+              >
+                {session ? "Sign Out" : "Sign In"}
+              </button>
+            </div>
+          </nav>
+
+          <div style={{ padding: "80px 24px 40px", textAlign: "center" }}>
+            <h1 style={{ 
+              fontSize: "clamp(48px, 9vw, 84px)", fontWeight: 800, 
+              letterSpacing: "-0.05em", lineHeight: "1.05", marginBottom: "12px", color: "#ffffff" 
+            }}>
+              Find the best <br/>
+              <span style={{ color: "#ef4444" }}>mentors at SRM.</span>
+            </h1>
+            <p style={{ 
+              color: "#71717a", fontSize: "clamp(14px, 2vw, 17px)", 
+              maxWidth: "500px", margin: "0 auto 40px", lineHeight: "1.6" 
+            }}>
+              The community-driven platform for honest faculty reviews and academic insights.
+            </p>
+
+            <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name or department..."
+                style={{ width: "100%", backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "14px", color: "white", padding: "18px 24px", fontSize: "16px", outline: "none" }}
+              />
+            </div>
+
+            <div className="hide-scrollbar" style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "24px", overflowX: "auto", paddingBottom: "10px" }}>
+              <button 
+                onClick={() => {setSelectedStars(null); setShowRedFlags(false);}}
+                style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: (!selectedStars && !showRedFlags) ? "#ef4444" : "#27272a", backgroundColor: (!selectedStars && !showRedFlags) ? "rgba(239, 68, 68, 0.1)" : "transparent", color: (!selectedStars && !showRedFlags) ? "#ef4444" : "#71717a", cursor: "pointer" }}
+              >
+                TOP 50
+              </button>
+              <button 
+                onClick={() => {setShowRedFlags(!showRedFlags); setSelectedStars(null);}}
+                style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: showRedFlags ? "#ef4444" : "#27272a", backgroundColor: showRedFlags ? "rgba(239, 68, 68, 0.2)" : "transparent", color: showRedFlags ? "#fff" : "#ff4444", cursor: "pointer", boxShadow: showRedFlags ? "0 0 15px rgba(239, 68, 68, 0.3)" : "none" }}
+              >
+                🚩 RED FLAGS
+              </button>
+              {[4, 3, 2, 1].map((star) => (
+                <button 
+                  key={star}
+                  onClick={() => {setSelectedStars(selectedStars === star ? null : star); setShowRedFlags(false);}}
+                  style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: selectedStars === star ? "#ef4444" : "#27272a", backgroundColor: selectedStars === star ? "rgba(239, 68, 68, 0.1)" : "transparent", color: selectedStars === star ? "#ef4444" : "#71717a", cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  {star} STAR{star > 1 ? 'S' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 style={{ fontSize: "11px", fontWeight: 800, color: showRedFlags ? "#ef4444" : "#3f3f46", textTransform: "uppercase", letterSpacing: "1.5px" }}>
+                {showRedFlags ? "CRITICAL: LOW RATED FACULTY" : isFiltering ? `MATCHING RESULTS (${displayList.length})` : "TOP 50 FACULTY MEMBERS"}
+              </h2>
+              <button onClick={() => setShowImport(!showImport)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: 700 }}>
+                {showImport ? "CLOSE" : "+ IMPORT PROFILE"}
+              </button>
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                 <div style={{ width: "30px", height: "30px", border: "2px solid #27272a", borderTopColor: "#ef4444", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto" }} />
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {displayList.map((f) => {
+                  const ratingStyle = getRatingStyle(f.avgRating);
+                  return (
+                    <Link key={f.id} href={`/faculty/${f.id}`} className="fade-in" style={{ display: "flex", alignItems: "center", padding: "16px", backgroundColor: "#111113", border: showRedFlags ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #1f1f22", borderRadius: "16px", textDecoration: "none" }}>
+                      <div style={{ marginRight: "16px" }}>
+                        {f.photoUrl ? (
+                          <img src={`/api/image-proxy?url=${encodeURIComponent(f.photoUrl)}`} style={{ width: "48px", height: "48px", borderRadius: "12px", objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ width: "48px", height: "48px", borderRadius: "12px", backgroundColor: "#27272a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800 }}>{f.name?.[0]}</div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</h3>
+                        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#71717a" }}>{f.department}</p>
+                      </div>
+                      <div style={{ textAlign: "right", marginLeft: "12px" }}>
+                        <div style={{ backgroundColor: ratingStyle.bg, color: ratingStyle.color, padding: "6px 12px", borderRadius: "10px", fontWeight: 800, fontSize: "18px" }}>{f.avgRating}</div>
+                        <p style={{ margin: "4px 0 0", fontSize: "10px", color: "#3f3f46", fontWeight: 700 }}>{f.ratingCount} REVIEWS</p>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)", backgroundColor: "rgba(24, 24, 27, 0.8)", backdropFilter: "blur(20px)", border: "1px solid #3f3f46", borderRadius: "30px", display: "flex", padding: "8px 12px", gap: "8px", zIndex: 1000 }}>
+            {[
+              { href: "/", label: "Home" },
+              { href: "/today", label: "Today" },
+              { href: "/incidents", label: "Feed" },
+              { href: "/rooms", label: "Rooms" },
+            ].map((item) => (
+              <Link key={item.label} href={item.href} style={{
+                padding: "8px 16px", borderRadius: "20px", color: item.href === "/" ? "#fff" : "#a1a1aa",
+                backgroundColor: item.href === "/" ? "#ef4444" : "transparent", textDecoration: "none", fontSize: "13px", fontWeight: 600
+              }}>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* The Loading Placeholder that matches the outer div exactly */
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+           <div style={{ width: "30px", height: "30px", border: "2px solid #27272a", borderTopColor: "#ef4444", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+        </div>
+      )}
     </div>
   )
 }
