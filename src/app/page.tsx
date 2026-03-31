@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function HomePage() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
-  const [mounted, setMounted] = useState(false)
+
   const [query, setQuery] = useState("")
   const [selectedStars, setSelectedStars] = useState<number | null>(null)
   const [showRedFlags, setShowRedFlags] = useState(false)
@@ -20,7 +20,6 @@ export default function HomePage() {
   const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     fetchFaculty()
   }, [])
 
@@ -72,14 +71,9 @@ export default function HomePage() {
   const sortedFaculty = [...filteredFaculty].sort((a, b) => {
     const ratingA = parseFloat(a.avgRating || "0")
     const ratingB = parseFloat(b.avgRating || "0")
-    const reviewsA = a.ratingCount || 0
-    const reviewsB = b.ratingCount || 0
-    if (showRedFlags) {
-      if (ratingA !== ratingB) return ratingA - ratingB
-      return reviewsB - reviewsA 
-    }
+    if (showRedFlags) return ratingA - ratingB
     if (ratingA !== ratingB) return ratingB - ratingA
-    return reviewsB - reviewsA
+    return (b.ratingCount || 0) - (a.ratingCount || 0)
   })
 
   const displayList = isFiltering ? sortedFaculty : sortedFaculty.slice(0, 50)
@@ -97,7 +91,6 @@ export default function HomePage() {
       minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5",
       fontFamily: "Inter, -apple-system, sans-serif", paddingBottom: "120px"
     }}>
-      {/* SOLUTION: Define styles as a string variable outside the render or use standard CSS */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.4s ease forwards; }
@@ -116,14 +109,12 @@ export default function HomePage() {
         </div>
         
         <div style={{ minWidth: "80px", display: "flex", justifyContent: "flex-end" }}>
-          {mounted && (
-            <button 
-              onClick={() => (session ? signOut() : signIn("google"))}
-              style={{ fontSize: "13px", fontWeight: 500, padding: "8px 16px", borderRadius: "20px", backgroundColor: session ? "transparent" : "#fff", color: session ? "#a1a1aa" : "#000", border: session ? "1px solid #27272a" : "none", cursor: "pointer" }}
-            >
-              {session ? "Sign Out" : "Sign In"}
-            </button>
-          )}
+          <button 
+            onClick={() => (session ? signOut() : signIn("google"))}
+            style={{ fontSize: "13px", fontWeight: 500, padding: "8px 16px", borderRadius: "20px", backgroundColor: session ? "transparent" : "#fff", color: session ? "#a1a1aa" : "#000", border: session ? "1px solid #27272a" : "none", cursor: "pointer" }}
+          >
+            {session ? "Sign Out" : "Sign In"}
+          </button>
         </div>
       </nav>
 
@@ -149,14 +140,12 @@ export default function HomePage() {
           >
             TOP 50
           </button>
-          
           <button 
             onClick={() => {setShowRedFlags(!showRedFlags); setSelectedStars(null);}}
             style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: showRedFlags ? "#ef4444" : "#27272a", backgroundColor: showRedFlags ? "rgba(239, 68, 68, 0.2)" : "transparent", color: showRedFlags ? "#fff" : "#ff4444", cursor: "pointer", boxShadow: showRedFlags ? "0 0 15px rgba(239, 68, 68, 0.3)" : "none" }}
           >
             🚩 RED FLAGS
           </button>
-
           {[4, 3, 2, 1].map((star) => (
             <button 
               key={star}
@@ -222,8 +211,18 @@ export default function HomePage() {
       </div>
 
       <div style={{ position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)", backgroundColor: "rgba(24, 24, 27, 0.8)", backdropFilter: "blur(20px)", border: "1px solid #3f3f46", borderRadius: "30px", display: "flex", padding: "8px 12px", gap: "8px", zIndex: 1000 }}>
-        {["Home", "Today", "Feed", "Rooms"].map((label) => (
-          <Link key={label} href={label === "Home" ? "/" : `/${label.toLowerCase()}`} style={{ padding: "8px 16px", borderRadius: "20px", color: label === "Home" ? "#fff" : "#a1a1aa", backgroundColor: label === "Home" ? "#ef4444" : "transparent", textDecoration: "none", fontSize: "13px", fontWeight: 600 }}>{label}</Link>
+        {[
+          { href: "/", label: "Home" },
+          { href: "/today", label: "Today" },
+          { href: "/incidents", label: "Feed" },
+          { href: "/rooms", label: "Rooms" },
+        ].map((item) => (
+          <Link key={item.label} href={item.href} style={{
+            padding: "8px 16px", borderRadius: "20px", color: item.href === "/" ? "#fff" : "#a1a1aa",
+            backgroundColor: item.href === "/" ? "#ef4444" : "transparent", textDecoration: "none", fontSize: "13px", fontWeight: 600
+          }}>
+            {item.label}
+          </Link>
         ))}
       </div>
     </div>
