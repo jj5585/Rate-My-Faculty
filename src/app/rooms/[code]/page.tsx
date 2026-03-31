@@ -177,7 +177,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       </div>
 
       {/* Input Area */}
-      <div style={{ padding: "16px 20px", borderTop: "1px solid #1f1f22", backgroundColor: "#0a0a0a" }}>
+      <div style={{ padding: "12px 20px 14px", borderTop: "1px solid #1f1f22", backgroundColor: "#0a0a0a" }}>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <input
             value={content}
@@ -203,6 +203,10 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
             {sending ? "..." : "↑"}
           </button>
         </div>
+        {/* Posting Area Disclaimer — Legal Shield Layer 1 */}
+        <p style={{ marginTop: "8px", fontSize: "9px", color: "#27272a", textAlign: "center", lineHeight: "1.4" }}>
+          All content represents user opinions and experiences. We do not verify claims. Report inappropriate content for review.
+        </p>
       </div>
     </div>
   )

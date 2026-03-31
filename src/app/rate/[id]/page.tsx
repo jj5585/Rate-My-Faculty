@@ -156,8 +156,8 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
 
         {/* Submit Action Area */}
         <div style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, padding: "20px",
-          backgroundColor: "rgba(10, 10, 10, 0.8)", backdropFilter: "blur(20px)",
+          position: "fixed", bottom: 0, left: 0, right: 0, padding: "16px 20px 20px",
+          backgroundColor: "rgba(10, 10, 10, 0.9)", backdropFilter: "blur(20px)",
           borderTop: "1px solid #1f1f22", zIndex: 100
         }}>
           <button
@@ -172,6 +172,19 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
           >
             {loading ? "Posting Anonymously..." : "Publish Review"}
           </button>
+          {/* Posting Area Disclaimer — Legal Shield Layer 1 */}
+          <p style={{
+            marginTop: "10px",
+            fontSize: "10px",
+            color: "#3f3f46",
+            textAlign: "center",
+            lineHeight: "1.5",
+            maxWidth: "600px",
+            margin: "10px auto 0",
+          }}>
+            All content represents user opinions and experiences. We do not verify claims.
+            Report inappropriate content for review.
+          </p>
         </div>
       </form>
     </div>

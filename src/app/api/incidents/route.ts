@@ -8,7 +8,10 @@ export async function GET() {
   const now = new Date()
 
   const incidents = await prisma.incident.findMany({
-    where: { expiresAt: { gt: now } },
+    where: {
+      expiresAt: { gt: now },
+      hidden: false,           // ← exclude auto-hidden posts
+    },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { reports: true } } },
   })

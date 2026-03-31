@@ -66,9 +66,9 @@ model Faculty {
 }
 
 model Rating {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   facultyId       String
-  faculty         Faculty  @relation(fields: [facultyId], references: [id])
+  faculty         Faculty        @relation(fields: [facultyId], references: [id])
   teachingClarity Int
   approachability Int
   gradingFairness Int
@@ -76,8 +76,10 @@ model Rating {
   partiality      Int
   behaviour       Int
   review          String?
-  ratingHash      String   @unique
-  createdAt       DateTime @default(now())
+  ratingHash      String         @unique
+  flagged         Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  reports         RatingReport[]
 }
 
 model Incident {
@@ -86,6 +88,7 @@ model Incident {
   category  String
   upvotes   Int              @default(0)
   userHash  String
+  hidden    Boolean          @default(false)
   createdAt DateTime         @default(now())
   expiresAt DateTime
   reports   IncidentReport[]
@@ -116,4 +119,12 @@ model GossipMessage {
   content   String
   userHash  String
   createdAt DateTime    @default(now())
+}
+
+model RatingReport {
+  id         String   @id @default(cuid())
+  ratingId   String
+  rating     Rating   @relation(fields: [ratingId], references: [id], onDelete: Cascade)
+  reportHash String   @unique
+  createdAt  DateTime @default(now())
 }

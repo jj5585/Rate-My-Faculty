@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ShareButton from "@/components/ShareButton";
+import RatingReportButton from "@/components/RatingReportButton";
 
 export default async function FacultyProfile({
   params,
@@ -183,12 +184,23 @@ export default async function FacultyProfile({
                 )}
                 <div style={{ marginTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ color: "#3f3f46", fontSize: "10px", fontWeight: 700, letterSpacing: "1px" }}>ANONYMOUS</span>
-                  <span style={{ color: "#3f3f46", fontSize: "10px" }}>{new Date(r.createdAt).toLocaleDateString()}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ color: "#3f3f46", fontSize: "10px" }}>{new Date(r.createdAt).toLocaleDateString()}</span>
+                    <RatingReportButton ratingId={r.id} />
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+      </div>
+
+      {/* Reviews Disclaimer */}
+      <div style={{ padding: "0 16px 16px", textAlign: "center" }}>
+        <p style={{ fontSize: "10px", lineHeight: "1.6", color: "#3f3f46" }}>
+          All content represents user opinions and experiences. We do not verify claims.{" "}
+          Report inappropriate content for review.
+        </p>
       </div>
 
       {/* Navigation Island */}

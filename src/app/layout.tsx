@@ -56,6 +56,23 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
         <Analytics />
+        <footer style={{
+          borderTop: "1px solid #1a1a1d",
+          padding: "14px 24px",
+          textAlign: "center" as const,
+          backgroundColor: "#0a0a0a",
+        }}>
+          <p style={{
+            fontSize: "10px",
+            lineHeight: "1.6",
+            color: "#3f3f46",
+            maxWidth: "600px",
+            margin: "0 auto",
+          }}>
+            All content represents user opinions and experiences. We do not verify claims.{" "}
+            Report inappropriate content for review.
+          </p>
+        </footer>
       </body>
     </html>
   );
