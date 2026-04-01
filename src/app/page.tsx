@@ -188,8 +188,7 @@ export default function HomePage() {
 
           <div style={{ textAlign: "center", marginTop: "80px", padding: "0 20px" }}>
             <p style={{ fontSize: "11px", color: "#3f3f46", lineHeight: "1.6", margin: "0 0 16px", fontWeight: 500 }}>
-              All content represents user opinions and experiences. We do not verify claims. <br/>
-              Report inappropriate content for review.
+              All content represents user-submitted opinions and experiences. We do not verify the accuracy of any claims. <br/>Users are solely responsible for their submissions. <br/>We reserve the right to remove content at our discretion. <br/>By using this platform, you agree to our Terms of Service.
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
               <Link href="/privacy" style={{ fontSize: "11px", color: "#71717a", textDecoration: "underline", fontWeight: 700 }}>PRIVACY POLICY</Link>
