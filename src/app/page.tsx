@@ -14,6 +14,10 @@ export default function HomePage() {
   const [showRedFlags, setShowRedFlags] = useState(false)
   const [allFaculty, setAllFaculty] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [importUrl, setImportUrl] = useState("")
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState("")
+  const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -31,6 +35,27 @@ export default function HomePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleImport() {
+    if (!importUrl) return
+    setImporting(true)
+    setImportMsg("")
+    const res = await fetch("/api/import-faculty", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: importUrl }),
+    })
+    const data = await res.json()
+    if (data.facultyId) {
+      setImportMsg("✓ Profile Sync Successful")
+      setImportUrl("")
+      fetchFaculty()
+      router.push(`/faculty/${data.facultyId}`)
+    } else {
+      setImportMsg(`✗ ${data.error || "Import failed"}`)
+    }
+    setImporting(false)
   }
 
   const isFiltering = query.trim().length > 0 || selectedStars !== null || showRedFlags
@@ -62,7 +87,6 @@ export default function HomePage() {
     return { color: "#ff4444", bg: "rgba(255, 68, 68, 0.1)" }
   }
 
-  // Hydration Guard
   if (!mounted) return <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a" }} />
 
   return (
@@ -78,7 +102,6 @@ export default function HomePage() {
         .nav-item:active { transform: scale(0.95); transition: transform 0.1s; }
       `}} />
 
-      {/* Main Scroll Content */}
       <main style={{ paddingBottom: "200px", position: "relative", zIndex: 1 }} className="fade-in">
         <nav style={{
           backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
@@ -116,8 +139,27 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Faculty List */}
+        {/* Faculty List Section */}
         <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <h2 style={{ fontSize: "11px", fontWeight: 800, color: showRedFlags ? "#ef4444" : "#3f3f46", textTransform: "uppercase", letterSpacing: "1.5px" }}>
+              {showRedFlags ? "CRITICAL: LOW RATED" : isFiltering ? `MATCHING (${displayList.length})` : "TOP 50 MEMBERS"}
+            </h2>
+            <button onClick={() => setShowImport(!showImport)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: 700 }}>
+              {showImport ? "CLOSE" : "+ IMPORT PROFILE"}
+            </button>
+          </div>
+
+          {showImport && (
+            <div className="fade-in" style={{ backgroundColor: "#111113", border: "1px solid #27272a", borderRadius: "16px", padding: "20px", marginBottom: "24px" }}>
+               <div style={{ display: "flex", gap: "10px" }}>
+                  <input value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="SRM Profile URL..." style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #27272a", backgroundColor: "#000", color: "white", fontSize: "13px" }} />
+                  <button onClick={handleImport} disabled={importing} style={{ backgroundColor: "#ef4444", color: "white", border: "none", padding: "0 20px", borderRadius: "10px", fontWeight: 700 }}>{importing ? "..." : "GO"}</button>
+               </div>
+               {importMsg && <p style={{ marginTop: "10px", fontSize: "12px", color: importMsg.includes("✓") ? "#10b981" : "#ef4444" }}>{importMsg}</p>}
+            </div>
+          )}
+
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {loading ? (
               <div style={{ textAlign: "center", padding: "40px" }}><div style={{ width: "24px", height: "24px", border: "2px solid #27272a", borderTopColor: "#ef4444", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto" }} /></div>
@@ -144,7 +186,6 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Legal Footer Section */}
           <div style={{ textAlign: "center", marginTop: "80px", padding: "0 20px" }}>
             <p style={{ fontSize: "11px", color: "#3f3f46", lineHeight: "1.6", margin: "0 0 16px", fontWeight: 500 }}>
               All content represents user opinions and experiences. We do not verify claims. <br/>
@@ -158,7 +199,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* FIXED FLOATING NAV - MAX Z-INDEX & POINTER FIX */}
+      {/* FIXED NAVIGATION */}
       <div style={{ 
         position: "fixed", bottom: "32px", left: "50%", transform: "translateX(-50%)", 
         backgroundColor: "rgba(24, 24, 27, 0.95)", backdropFilter: "blur(20px)", 
