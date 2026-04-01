@@ -22,6 +22,10 @@ export const metadata: Metadata = {
   title: "Rate My Faculty — SRMIST",
   description: "Anonymous faculty reviews by SRMIST students. Rate your professors on teaching, approachability, fairness and more.",
   manifest: "/manifest.json",
+  // ADDED GOOGLE VERIFICATION HERE
+  verification: {
+    google: "hmeISNjUVRQpT7myKlg6WLBg7_-Yn_Ij7CSl5QFaTXU",
+  },
   icons: {
     icon: "/icon-512.png",
     apple: "/icon-512.png",
