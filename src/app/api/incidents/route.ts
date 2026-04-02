@@ -4,19 +4,35 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { createHash } from "crypto"
 import { prisma } from "@/lib/prisma"
 
+// We remove 'force-dynamic' to allow the Edge Network to cache the GET response
 export async function GET() {
   const now = new Date()
 
-  const incidents = await prisma.incident.findMany({
-    where: {
-      expiresAt: { gt: now },
-      hidden: false,           // ← exclude auto-hidden posts
-    },
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { reports: true } } },
-  })
+  try {
+    const incidents = await prisma.incident.findMany({
+      where: {
+        expiresAt: { gt: now },
+        hidden: false,
+      },
+      orderBy: { createdAt: "desc" },
+      // Limit the number of records to reduce data transfer costs
+      take: 50, 
+      include: { _count: { select: { reports: true } } },
+    })
 
-  return NextResponse.json({ incidents })
+    return NextResponse.json(
+      { incidents },
+      {
+        headers: {
+          // s-maxage=10: Cache on Vercel Edge for 10 seconds
+          // stale-while-revalidate: Serve old data for up to 59s while updating in bg
+          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59',
+        },
+      }
+    )
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -26,27 +42,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Sign in to post" }, { status: 401 })
   }
 
-  const { content, category } = await req.json()
+  try {
+    const { content, category } = await req.json()
 
-  if (!content || content.trim().length < 10) {
-    return NextResponse.json({ error: "Post must be at least 10 characters" }, { status: 400 })
+    if (!content || content.trim().length < 10) {
+      return NextResponse.json({ error: "Too short" }, { status: 400 })
+    }
+
+    if (!category) {
+      return NextResponse.json({ error: "Select category" }, { status: 400 })
+    }
+
+    const userHash = createHash("sha256").update(session.user.email).digest("hex")
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+    const incident = await prisma.incident.create({
+      data: {
+        content: content.trim(),
+        category,
+        userHash,
+        expiresAt,
+      },
+    })
+
+    return NextResponse.json({ incident })
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to post" }, { status: 500 })
   }
-
-  if (!category) {
-    return NextResponse.json({ error: "Please select a category" }, { status: 400 })
-  }
-
-  const userHash = createHash("sha256").update(session.user.email).digest("hex")
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
-
-  const incident = await prisma.incident.create({
-    data: {
-      content: content.trim(),
-      category,
-      userHash,
-      expiresAt,
-    },
-  })
-
-  return NextResponse.json({ incident })
 }

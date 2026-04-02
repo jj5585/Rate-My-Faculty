@@ -4,6 +4,16 @@ import Link from "next/link";
 import ShareButton from "@/components/ShareButton";
 import RatingReportButton from "@/components/RatingReportButton";
 
+export const revalidate = 30
+
+export async function generateStaticParams() {
+  const faculty = await prisma.faculty.findMany({
+    select: { id: true },
+    take: 50,
+  })
+  return faculty.map((f) => ({ id: f.id }))
+}
+
 export default async function FacultyProfile({
   params,
 }: {
