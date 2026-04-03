@@ -4,14 +4,16 @@ import Link from "next/link";
 import ShareButton from "@/components/ShareButton";
 import RatingReportButton from "@/components/RatingReportButton";
 
-export const revalidate = 30
+/** * THE FIX: 
+ * 1. Set revalidate to false (On-Demand only).
+ * 2. Force static to ensure Turbopack treats this as a clean static segment.
+ */
+export const revalidate = false; 
+export const dynamic = "force-static";
 
 export async function generateStaticParams() {
-  const faculty = await prisma.faculty.findMany({
-    select: { id: true },
-    take: 50,
-  })
-  return faculty.map((f) => ({ id: f.id }))
+  const faculty = await prisma.faculty.findMany({ select: { id: true } });
+  return faculty.map((f) => ({ id: f.id }));
 }
 
 export default async function FacultyProfile({
@@ -23,7 +25,7 @@ export default async function FacultyProfile({
 
   const faculty = await prisma.faculty.findUnique({
     where: { id },
-    include: { ratings: { orderBy: { createdAt: 'desc' } } },
+    include: { ratings: { orderBy: { createdAt: "desc" } } },
   });
 
   if (!faculty) return notFound();
@@ -45,9 +47,13 @@ export default async function FacultyProfile({
     { label: "Behaviour", key: "behaviour" },
   ];
 
-  const overallAvg = totalReviews === 0 ? null : (
-    metrics.reduce((sum, m) => sum + parseFloat(getAvg(m.key)), 0) / metrics.length
-  ).toFixed(1);
+  const overallAvg =
+    totalReviews === 0
+      ? null
+      : (
+          metrics.reduce((sum, m) => sum + parseFloat(getAvg(m.key)), 0) /
+          metrics.length
+        ).toFixed(1);
 
   const ratingColor = (avg: string) => {
     const n = parseFloat(avg);
@@ -58,42 +64,43 @@ export default async function FacultyProfile({
   };
 
   return (
-    <div style={{ 
-      minHeight: "100vh", 
-      backgroundColor: "#0a0a0a", 
-      color: "#f4f4f5", 
-      fontFamily: "Inter, -apple-system, sans-serif",
-      paddingBottom: "100px" 
-    }}>
-      {/* Top Nav */}
+    <div style={{
+        minHeight: "100vh",
+        backgroundColor: "#0a0a0a",
+        color: "#f4f4f5",
+        fontFamily: "Inter, -apple-system, sans-serif",
+        paddingBottom: "120px", // Increased for nav island
+      }}
+    >
       <nav style={{
-        padding: "16px 20px",
-        display: "flex",
-        alignItems: "center",
-        borderBottom: "1px solid #1f1f22",
-        backgroundColor: "rgba(10, 10, 10, 0.8)",
-        backdropFilter: "blur(10px)",
-        position: "sticky",
-        top: 0,
-        zIndex: 10
-      }}>
+          padding: "16px 20px",
+          display: "flex",
+          alignItems: "center",
+          borderBottom: "1px solid #1f1f22",
+          backgroundColor: "rgba(10, 10, 10, 0.8)",
+          backdropFilter: "blur(10px)",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+        }}
+      >
         <Link href="/" style={{ color: "#71717a", textDecoration: "none", fontSize: "14px", fontWeight: 500 }}>
           ← BACK TO LIST
         </Link>
       </nav>
 
-      {/* Hero Header */}
       <div style={{ padding: "24px 16px" }}>
         <div style={{
-          backgroundColor: "#111113",
-          border: "1px solid #1f1f22",
-          borderRadius: "24px",
-          padding: "24px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          textAlign: "center"
-        }}>
+            backgroundColor: "#111113",
+            border: "1px solid #1f1f22",
+            borderRadius: "24px",
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
           {faculty.photoUrl ? (
             <img
               src={`/api/image-proxy?url=${encodeURIComponent(faculty.photoUrl)}`}
@@ -119,21 +126,9 @@ export default async function FacultyProfile({
         </div>
       </div>
 
-      {/* Primary Actions */}
       <div style={{ padding: "0 16px", display: "flex", gap: "12px" }}>
-        <Link
-          href={`/rate/${faculty.id}`}
-          style={{
-            flex: 1,
-            backgroundColor: "#fff",
-            color: "#000",
-            textAlign: "center",
-            fontWeight: 800,
-            padding: "16px",
-            borderRadius: "16px",
-            textDecoration: "none",
-            fontSize: "15px",
-            boxShadow: "0 4px 14px rgba(255,255,255,0.1)"
+        <Link href={`/rate/${faculty.id}`} style={{
+            flex: 1, backgroundColor: "#fff", color: "#000", textAlign: "center", fontWeight: 800, padding: "16px", borderRadius: "16px", textDecoration: "none", fontSize: "15px", boxShadow: "0 4px 14px rgba(255,255,255,0.1)",
           }}
         >
           RATE THIS FACULTY
@@ -143,7 +138,6 @@ export default async function FacultyProfile({
         </div>
       </div>
 
-      {/* Stats Breakdown */}
       <div style={{ padding: "32px 16px" }}>
         <h2 style={{ fontSize: "12px", fontWeight: 800, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "2px", marginBottom: "16px" }}>
           METRICS BREAKDOWN
@@ -161,7 +155,6 @@ export default async function FacultyProfile({
         </div>
       </div>
 
-      {/* Feed Section */}
       <div style={{ padding: "0 16px 40px" }}>
         <h2 style={{ fontSize: "12px", fontWeight: 800, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "2px", marginBottom: "16px" }}>
           STUDENT FEEDBACK ({totalReviews})
@@ -205,30 +198,51 @@ export default async function FacultyProfile({
         )}
       </div>
 
-      {/* Reviews Disclaimer */}
-      <div style={{ padding: "0 16px 16px", textAlign: "center" }}>
+      {/* Footer Legal Disclaimer */}
+      <div style={{ padding: "0 16px 40px", textAlign: "center" }}>
         <p style={{ fontSize: "10px", lineHeight: "1.6", color: "#3f3f46" }}>
-          All content represents user opinions and experiences. We do not verify claims.{" "}
-          Report inappropriate content for review.
+          All content represents user opinions and experiences. We do not verify claims. Report inappropriate content for review.
         </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: "16px", marginTop: "12px" }}>
+          <Link href="/privacy" style={{ fontSize: "10px", color: "#71717a", textDecoration: "underline" }}>PRIVACY</Link>
+          <Link href="/terms" style={{ fontSize: "10px", color: "#71717a", textDecoration: "underline" }}>TERMS</Link>
+          <Link href="/guidelines" style={{ fontSize: "10px", color: "#71717a", textDecoration: "underline" }}>GUIDELINES</Link>
+        </div>
       </div>
 
-      {/* Navigation Island */}
+      {/* Floating Bottom Nav */}
       <div style={{
-        position: "fixed",
-        bottom: "24px", left: "20px", right: "20px",
-        backgroundColor: "rgba(18, 18, 18, 0.8)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid #27272a",
-        borderRadius: "24px",
-        display: "flex",
-        padding: "12px",
-        justifyContent: "space-around",
-        zIndex: 100
-      }}>
-        <Link href="/" style={{ color: "#E8001C", fontWeight: 800, textDecoration: "none", fontSize: "12px" }}>HOME</Link>
-        <Link href="/incidents" style={{ color: "#71717a", fontWeight: 800, textDecoration: "none", fontSize: "12px" }}>FEED</Link>
-        <Link href="/rooms" style={{ color: "#71717a", fontWeight: 800, textDecoration: "none", fontSize: "12px" }}>ROOMS</Link>
+          position: "fixed",
+          bottom: "32px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: "rgba(24, 24, 27, 0.95)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid #3f3f46",
+          borderRadius: "40px",
+          display: "flex",
+          padding: "8px",
+          gap: "4px",
+          zIndex: 9999,
+          pointerEvents: "auto",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
+        }}
+      >
+        {[
+          { href: "/", label: "Home" },
+          { href: "/today", label: "Today" },
+          { href: "/incidents", label: "Feed" },
+          { href: "/rooms", label: "Rooms" },
+        ].map((item) => (
+          <Link key={item.label} href={item.href} style={{
+            padding: "10px 22px", borderRadius: "30px", 
+            color: item.href === "/" ? "#fff" : "#a1a1aa", 
+            backgroundColor: "transparent", 
+            textDecoration: "none", fontSize: "13px", fontWeight: 700,
+          }}>
+            {item.label}
+          </Link>
+        ))}
       </div>
     </div>
   );

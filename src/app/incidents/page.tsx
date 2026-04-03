@@ -1,6 +1,11 @@
 "use client"
 
-export const revalidate = 10
+/**
+ * THE FIX: 
+ * Using force-dynamic ensures this client component doesn't conflict 
+ * with static revalidation logic in other parts of the app during build.
+ */
+export const dynamic = "force-dynamic"
 
 import { useState, useEffect } from "react"
 import { useSession, signIn } from "next-auth/react"
@@ -174,10 +179,8 @@ export default function IncidentsPage() {
 
       <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
 
-        {/* DISCLAIMER BANNER */}
         <DisclaimerBanner />
 
-        {/* Category Filter */}
         <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "16px", scrollbarWidth: "none" }}>
           <button onClick={() => setActiveCategory("All")} style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: 600, cursor: "pointer", backgroundColor: activeCategory === "All" ? "#ef4444" : "#18181b", color: activeCategory === "All" ? "#fff" : "#71717a", border: "1px solid #27272a", whiteSpace: "nowrap" }}>All Feed</button>
           {CATEGORIES.map((c) => (
@@ -187,7 +190,6 @@ export default function IncidentsPage() {
           ))}
         </div>
 
-        {/* Composer Trigger */}
         <div style={{ marginBottom: "24px" }}>
           {status === "authenticated" ? (
             <button onClick={() => setShowForm(!showForm)} style={{ width: "100%", padding: "16px", borderRadius: "16px", backgroundColor: "#111113", border: "1px solid #1f1f22", color: "#a1a1aa", textAlign: "left", fontSize: "14px", cursor: "pointer" }}>
@@ -200,7 +202,6 @@ export default function IncidentsPage() {
           )}
         </div>
 
-        {/* Post Form */}
         {showForm && (
           <div className="fade-in" style={{ backgroundColor: "#111113", border: "1px solid #ef4444", borderRadius: "20px", padding: "20px", marginBottom: "24px" }}>
             <textarea
@@ -218,21 +219,18 @@ export default function IncidentsPage() {
             <button onClick={handlePost} disabled={posting} style={{ width: "100%", marginTop: "16px", padding: "14px", borderRadius: "12px", backgroundColor: "#fff", color: "#000", fontWeight: 800, border: "none", cursor: "pointer", opacity: posting ? 0.5 : 1 }}>
               {posting ? "POSTING..." : "SEND TO FEED"}
             </button>
-            {/* POSTING AREA DISCLAIMER */}
             <p style={{ marginTop: "12px", fontSize: "10px", color: "#3f3f46", textAlign: "center", lineHeight: "1.5" }}>
               All content represents user opinions and experiences. We do not verify claims. Report inappropriate content for review.
             </p>
           </div>
         )}
 
-        {/* Report Toast */}
         {reportMsg && (
           <div className="slide-down" style={{ backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "10px 14px", marginBottom: "16px", fontSize: "12px", color: "#a1a1aa" }}>
             ✓ {reportMsg}
           </div>
         )}
 
-        {/* Feed */}
         {loading ? (
           <div style={{ padding: "40px", textAlign: "center", color: "#3f3f46" }}>Fetching stories...</div>
         ) : filtered.length === 0 ? (
@@ -255,7 +253,6 @@ export default function IncidentsPage() {
 
                   <p style={{ fontSize: "15px", lineHeight: "1.6", color: "#d4d4d8", margin: "0 0 20px" }}>{incident.content}</p>
 
-                  {/* ACTION BAR */}
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", borderTop: "1px solid #1f1f22", paddingTop: "14px" }}>
                     <button
                       onClick={() => handleUpvote(incident.id)}
@@ -264,7 +261,6 @@ export default function IncidentsPage() {
                       {upvoted.has(incident.id) ? "❤️ Relatable" : "🤍 Relatable"} · {incident.upvotes}
                     </button>
 
-                    {/* REPORT BUTTON */}
                     <ReportButton incidentId={incident.id} reportedSet={reported} onReport={handleReport} />
 
                     <span style={{ marginLeft: "auto", fontSize: "10px", fontWeight: 700, color: "#3f3f46", letterSpacing: "1px" }}>ANONYMOUS</span>
@@ -276,7 +272,6 @@ export default function IncidentsPage() {
         )}
       </main>
 
-      {/* FOOTER DISCLAIMER */}
       <footer style={{ maxWidth: "600px", margin: "40px auto 0", padding: "20px 20px 140px", borderTop: "1px solid #1a1a1d", textAlign: "center" }}>
         <p style={{ fontSize: "10px", lineHeight: "1.7", color: "#3f3f46" }}>
           All content represents user opinions and experiences. We do not verify claims.
@@ -286,7 +281,6 @@ export default function IncidentsPage() {
         </p>
       </footer>
 
-      {/* Bottom Nav */}
       <div style={{ position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)", backgroundColor: "rgba(24, 24, 27, 0.8)", backdropFilter: "blur(20px)", border: "1px solid #3f3f46", borderRadius: "30px", display: "flex", padding: "8px 12px", gap: "8px", zIndex: 1000 }}>
         <Link href="/" style={{ padding: "8px 16px", borderRadius: "20px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px" }}>Home</Link>
         <Link href="/incidents" style={{ padding: "8px 16px", borderRadius: "20px", color: "#fff", backgroundColor: "#ef4444", textDecoration: "none", fontSize: "13px" }}>Feed</Link>

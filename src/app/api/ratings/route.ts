@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import crypto from "crypto";
+import { revalidatePath } from "next/cache";
 
 export async function POST(req: Request) {
   try {
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     // ✅ CREATE RATING
-    const rating = await prisma.rating.create({
+    await prisma.rating.create({
       data: {
         facultyId,
         teachingClarity,
@@ -58,8 +59,12 @@ export async function POST(req: Request) {
       },
     });
 
-    return Response.json({ success: true });
+    // ♻️ ON-DEMAND REVALIDATION
+    // Instantly purge the ISR cache for this faculty's page so the
+    // next visitor sees the new rating, rather than waiting up to 1 hour.
+    revalidatePath(`/faculty/${facultyId}`);
 
+    return Response.json({ success: true });
   } catch (err) {
     console.error(err);
     return Response.json({ error: "Failed to submit" }, { status: 500 });
