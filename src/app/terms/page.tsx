@@ -1,84 +1,157 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 
 export default function TermsPage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
+
   return (
     <div style={{ 
-      minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5",
-      fontFamily: "Inter, -apple-system, sans-serif", paddingBottom: "100px"
+      minHeight: "100vh", 
+      backgroundColor: "#080808", 
+      color: "#f0ede8",
+      fontFamily: "'DM Sans', sans-serif", 
+      paddingBottom: "100px",
+      position: "relative"
     }}>
-      {/* Header */}
-      <header style={{
-        padding: "24px 20px", borderBottom: "1px solid #1f1f22",
-        backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
-        position: "sticky", top: 0, zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center"
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap');
+        
+        .playfair { font-family: 'Playfair Display', serif !important; }
+        .dmsans { font-family: 'DM Sans', sans-serif !important; }
+        
+        section { margin-bottom: 60px; }
+        h2 { 
+          font-family: 'Playfair Display', serif; 
+          font-size: 28px; 
+          font-weight: 700; 
+          margin-bottom: 24px; 
+          color: #f0ede8;
+          font-style: italic;
+        }
+        p, li { 
+          font-size: 16px; 
+          line-height: 1.8; 
+          color: #888; 
+          font-weight: 300;
+        }
+        .gold-box {
+          border-left: 2px solid #c8a96e;
+          padding-left: 32px;
+          margin: 40px 0;
+          background: rgba(200, 169, 110, 0.02);
+          padding-top: 20px;
+          padding-bottom: 20px;
+        }
+      `}} />
+
+      {/* NAV */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        backgroundColor: "rgba(8,8,8,0.95)",
+        backdropFilter: "blur(20px)",
+        borderBottom: "1px solid #1a1a1a",
+        padding: "0 32px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        height: "70px",
       }}>
-        <div>
-          <h1 style={{ fontSize: "20px", fontWeight: 800, letterSpacing: "-0.5px", margin: 0 }}>Terms of Service</h1>
-          <p style={{ fontSize: "11px", color: "#71717a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px" }}>
-            Effective: April 2, 2026
+        <Link href="/" style={{ textDecoration: "none" }}>
+          <span className="playfair" style={{ fontSize: "18px", fontWeight: 700, color: "#f0ede8" }}>
+            Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
+          </span>
+        </Link>
+        <Link href="/" style={{ 
+          fontSize: "11px", fontWeight: 700, color: "#c8a96e", 
+          textDecoration: "none", letterSpacing: "2px", textTransform: "uppercase" 
+        }}>
+          Exit Site
+        </Link>
+      </nav>
+
+      <main style={{ maxWidth: "800px", margin: "0 auto", padding: "100px 32px" }}>
+        
+        <header style={{ marginBottom: "80px", textAlign: "center" }}>
+          <span style={{ color: "#c8a96e", textTransform: "uppercase", letterSpacing: "3px", fontSize: "12px", fontWeight: 600 }}>
+            Legal Framework
+          </span>
+          <h1 className="playfair" style={{ fontSize: "clamp(40px, 8vw, 64px)", fontWeight: 700, margin: "20px 0" }}>
+            Terms of <span style={{ fontStyle: "italic" }}>Service</span>
+          </h1>
+          <div style={{ width: "40px", height: "1px", background: "#c8a96e", margin: "0 auto 20px" }} />
+          <p className="dmsans" style={{ fontSize: "14px", color: "#444" }}>Last Revised: April 4, 2026</p>
+        </header>
+
+        <div className="gold-box">
+          <h3 className="dmsans" style={{ fontSize: "12px", fontWeight: 700, color: "#c8a96e", letterSpacing: "1px", marginBottom: "12px", textTransform: "uppercase" }}>
+            Arbitration Notice
+          </h3>
+          <p style={{ fontSize: "14px", color: "#666", fontStyle: "italic" }}>
+            THESE TERMS CONTAIN AN ARBITRATION CLAUSE AND A CLASS ACTION WAIVER. BY USING THIS SITE, YOU AGREE THAT DISPUTES WILL BE RESOLVED BY BINDING, INDIVIDUAL ARBITRATION AND YOU WAIVE YOUR RIGHT TO PARTICIPATE IN A CLASS ACTION LAWSUIT.
           </p>
         </div>
-        <Link href="/" style={{ fontSize: "13px", fontWeight: 600, color: "#ef4444", textDecoration: "none" }}>BACK</Link>
-      </header>
 
-      <main style={{ maxWidth: "700px", margin: "0 auto", padding: "40px 20px", lineHeight: "1.7" }}>
-        
-        <section style={{ marginBottom: "32px" }}>
-          <h2 style={{ color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>1. Acceptance of Terms</h2>
-          <p style={{ color: "#a1a1aa", fontSize: "14px" }}>
-            By accessing Rate My Faculty (RMF), you agree to be bound by these terms. This platform is a community resource intended for students of SRMIST to share academic experiences.
+        <section>
+          <h2>1. Acceptance of Protocol</h2>
+          <p>
+            By accessing Rate My Faculty, you enter into a legally binding agreement to abide by these terms. This platform is a student-powered repository designed to provide transparency in higher education through anonymous, peer-reviewed faculty feedback.
           </p>
         </section>
 
-        <section style={{ marginBottom: "32px" }}>
-          <h2 style={{ color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>2. User Conduct & Content</h2>
-          <p style={{ color: "#a1a1aa", fontSize: "14px", marginBottom: "12px" }}>
-            You are solely responsible for the reviews you post. By using RMF, you agree NOT to:
+        <section>
+          <h2>2. Rules of Engagement</h2>
+          <p style={{ marginBottom: "20px" }}>
+            As a contributor to this editorial platform, you are solely responsible for the integrity of your submissions. You agree not to:
           </p>
-          <ul style={{ color: "#a1a1aa", fontSize: "14px", paddingLeft: "20px" }}>
-            <li>Post intentionally false, defamatory, or malicious information.</li>
-            <li>Use hate speech, threats, or harassment toward any faculty member or student.</li>
-            <li>Post private personal information (phone numbers, home addresses).</li>
-            <li>Spam the system with multiple entries for the same faculty member.</li>
+          <ul style={{ paddingLeft: "20px", listStyleType: "none" }}>
+            <li style={{ marginBottom: "12px" }}><span style={{ color: "#c8a96e", marginRight: "10px" }}>—</span> Post intentionally false or malicious information regarding a faculty member.</li>
+            <li style={{ marginBottom: "12px" }}><span style={{ color: "#c8a96e", marginRight: "10px" }}>—</span> Utilize hate speech, intimidation, or harassment in any review or gossip room.</li>
+            <li style={{ marginBottom: "12px" }}><span style={{ color: "#c8a96e", marginRight: "10px" }}>—</span> Reveal private personal data, such as personal contact numbers or residential addresses.</li>
+            <li style={{ marginBottom: "12px" }}><span style={{ color: "#c8a96e", marginRight: "10px" }}>—</span> Use automated scripts, "spiders," or scrapers to extract data from this directory.</li>
           </ul>
         </section>
 
-        <section style={{ marginBottom: "32px", padding: "20px", backgroundColor: "#111113", borderLeft: "4px solid #ef4444", borderRadius: "4px" }}>
-          <h2 style={{ color: "#fff", fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>3. Disclaimer of Liability</h2>
-          <p style={{ color: "#a1a1aa", fontSize: "13px" }}>
-            RMF does not verify the accuracy of user-generated reviews. Content represents the opinions of individual students and does not reflect the views of the RMF development team or SRMIST. We are not liable for any professional or personal impact resulting from content posted on this platform.
+        <section>
+          <h2>3. Institutional Submissions</h2>
+          <p>
+            Users may submit new colleges for inclusion. All submissions enter a "Pending" state and are subject to manual verification by the Rate My Faculty administrative team. We reserve the right to verify, reject, or modify any institution name or website link to ensure database accuracy.
           </p>
         </section>
 
-        <section style={{ marginBottom: "32px" }}>
-          <h2 style={{ color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>4. Content Moderation</h2>
-          <p style={{ color: "#a1a1aa", fontSize: "14px" }}>
-            We reserve the right to remove any content that violates these terms or is reported as inappropriate. Repeated violations may result in a permanent ban of your student account from the platform.
+        <section>
+          <h2>4. Disclaimer of Liability</h2>
+          <p>
+            Rate My Faculty acts as a neutral hosting provider. We do not verify the accuracy of user-generated ratings or reviews. Content represents the subjective opinions of individual students and does not reflect the views of the administration or the specific institutions listed. We are not liable for any professional impact resulting from data published on this platform.
           </p>
         </section>
 
-        <section style={{ marginBottom: "32px" }}>
-          <h2 style={{ color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>5. Faculty Rights</h2>
-          <p style={{ color: "#a1a1aa", fontSize: "14px" }}>
-            Faculty members may request the removal of reviews that contain verifiable false information or violate the conduct policies listed in Section 2.
+        <section>
+          <h2>5. Intellectual Property</h2>
+          <p>
+            The aesthetic design, "look and feel," custom typography, and the Champagne Gold branding are the exclusive property of Rate My Faculty. Reproduction or redistribution of this Material without express written consent is strictly prohibited.
           </p>
         </section>
 
-        <div style={{ textAlign: "center", marginTop: "60px", opacity: 0.5 }}>
-          <p style={{ fontSize: "11px", fontWeight: 600 }}>© 2026 RMF DEV TEAM</p>
-        </div>
+        <footer style={{ borderTop: "1px solid #1a1a1a", paddingTop: "60px", textAlign: "center" }}>
+          <p className="playfair" style={{ fontStyle: "italic", fontSize: "18px", color: "#333" }}>Transparency in Education.</p>
+          <p style={{ fontSize: "11px", color: "#222", marginTop: "20px", letterSpacing: "1px" }}>© 2026 RATEMYFACULTY DIRECTORY</p>
+        </footer>
       </main>
 
-      {/* Floating Nav */}
+      {/* Floating Footer Nav */}
       <div style={{
         position: "fixed", bottom: "32px", left: "50%", transform: "translateX(-50%)",
-        backgroundColor: "rgba(24, 24, 27, 0.9)", backdropFilter: "blur(20px)",
-        border: "1px solid #3f3f46", borderRadius: "40px", display: "flex", padding: "8px", gap: "4px", zIndex: 9999
+        backgroundColor: "rgba(13, 13, 13, 0.9)", backdropFilter: "blur(20px)",
+        border: "1px solid #1a1a1a", borderRadius: "2px", display: "flex", padding: "6px", gap: "4px", zIndex: 9999
       }}>
-        <Link href="/" style={{ padding: "10px 20px", borderRadius: "30px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px", fontWeight: 600 }}>Home</Link>
-        <Link href="/privacy" style={{ padding: "10px 20px", borderRadius: "30px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px", fontWeight: 600 }}>Privacy</Link>
+        <Link href="/" style={{ padding: "10px 24px", color: "#f0ede8", textDecoration: "none", fontSize: "11px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>Directory</Link>
+        <Link href="/privacy" style={{ padding: "10px 24px", color: "#666", textDecoration: "none", fontSize: "11px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>Privacy</Link>
       </div>
     </div>
   )
