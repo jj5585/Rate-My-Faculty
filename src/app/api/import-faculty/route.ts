@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const html = await res.text();
     const $ = cheerio.load(html);
 
-    // Name is in h2 — filter out nav/menu items
+    // Name extraction
     const name = $("h2").filter((_, el) => {
       const text = $(el).text().trim();
       return text.length > 2 && text.length < 80 &&
@@ -50,31 +50,31 @@ export async function POST(req: Request) {
       .filter((_, el) => /professor|lecturer|scientist/i.test($(el).text()))
       .first().text().trim() || "Faculty";
 
-    // Campus text looks like: "Department of Computing Technologies, Faculty of..."
     const campusText = $("*:contains('CAMPUS')").first().text();
     const deptMatch = campusText.match(/Department of ([^,]+)/);
     const department = deptMatch ? `Department of ${deptMatch[1].trim()}` : $("a[href*='department']").first().text().trim() || "SRMIST";
+    
     const expText = $("*:contains('years of experience')").first().text();
     const expMatch = expText.match(/(\d+)\s*years/);
     const experience = expMatch ? `${expMatch[1]} years` : null;
 
-    // Photo from CSS style block
-    let photoUrl: string | null = null;
-    $("style").each((_, el) => {
-      const css = $(el).html() || "";
-      const match = css.match(/url\(['"]?(https?:\/\/[^'")]+)['"]?\)/);
-      if (match) { photoUrl = match[1]; return false; }
-    });
-    if (!photoUrl) {
-      photoUrl = $("img[src*='wp-content']").first().attr("src") || null;
-    }
-
-    console.log("SCRAPED:", { name, designation, department, experience, photoUrl });
+    console.log("SCRAPED:", { name, designation, department, experience });
 
     const faculty = await prisma.faculty.upsert({
       where: { profileUrl: url },
-      update: { name, designation, department, experience, photoUrl },
-      create: { name, designation, department, experience, photoUrl, profileUrl: url },
+      update: { 
+        name, 
+        designation, 
+        department, 
+        experience 
+      },
+      create: { 
+        name, 
+        designation, 
+        department, 
+        experience, 
+        profileUrl: url 
+      },
     });
 
     return Response.json({ success: true, facultyId: faculty.id });
