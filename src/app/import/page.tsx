@@ -1,13 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function ImportPage() {
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleImport = async () => {
     if (!url) return;
@@ -25,7 +30,7 @@ export default function ImportPage() {
       if (data.facultyId) {
         router.push(`/faculty/${data.facultyId}`)
       } else {
-        alert("Import failed. Please check the URL and try again.")
+        alert("Import failed. Please verify the URL and try again.")
       }
     } catch (err) {
       console.error(err)
@@ -35,25 +40,70 @@ export default function ImportPage() {
     }
   }
 
+  if (!mounted) return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
+
   return (
     <div style={{ 
       minHeight: "100vh", 
-      backgroundColor: "#0a0a0a", 
-      color: "#f4f4f5",
-      fontFamily: "Inter, sans-serif",
+      backgroundColor: "#080808", 
+      color: "#f0ede8",
+      fontFamily: "'DM Sans', sans-serif",
       display: "flex",
-      flexDirection: "column"
+      flexDirection: "column",
+      position: "relative"
     }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;700&display=swap');
+        .playfair { font-family: 'Playfair Display', serif !important; }
+        
+        .import-input {
+          width: 100%;
+          backgroundColor: #0d0d0d;
+          border: 1px solid #1a1a1a;
+          border-radius: 2px;
+          color: #f0ede8;
+          padding: 18px;
+          font-size: 15px;
+          outline: none;
+          transition: border-color 0.3s ease;
+          font-family: 'DM Sans', sans-serif;
+        }
+        .import-input:focus { border-color: #c8a96e; }
+        
+        .btn-gold {
+          width: 100%;
+          background: #c8a96e;
+          color: #080808;
+          padding: 18px;
+          border: none;
+          border-radius: 2px;
+          font-weight: 700;
+          font-size: 13px;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .btn-gold:hover { background: #d4b87a; transform: translateY(-1px); }
+        .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+      `}} />
+
       {/* Top Navigation */}
       <nav style={{
-        padding: "16px 20px",
-        borderBottom: "1px solid #1f1f22",
+        padding: "0 32px",
+        height: "70px",
+        borderBottom: "1px solid #1a1a1a",
         display: "flex",
-        alignItems: "center"
+        alignItems: "center",
+        justifyContent: "space-between"
       }}>
-        <Link href="/" style={{ textDecoration: "none", color: "#71717a", fontSize: "14px" }}>
-          ← Back to Search
+        <Link href="/" style={{ textDecoration: "none", color: "#c8a96e", fontSize: "11px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>
+          ← Back to Directory
         </Link>
+        <span className="playfair" style={{ fontSize: "18px", fontWeight: 700 }}>
+          Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
+        </span>
+        <div style={{ width: "80px" }} />
       </nav>
 
       <div style={{ 
@@ -61,119 +111,77 @@ export default function ImportPage() {
         display: "flex", 
         alignItems: "center", 
         justifyContent: "center",
-        padding: "20px"
+        padding: "40px 20px"
       }}>
-        <div style={{ 
-          width: "100%", 
-          maxWidth: "450px", // FIXED: Changed maxWdth to maxWidth
-          animation: "fadeIn 0.5s ease-out" 
-        }}>
-          {/* Hero Header */}
-          <div style={{ textAlign: "center", marginBottom: "32px" }}>
-            <div style={{ 
-              width: "56px", height: "56px", 
-              backgroundColor: "rgba(239, 68, 68, 0.1)", 
-              borderRadius: "16px", 
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 16px",
-              color: "#ef4444",
-              fontSize: "24px"
-            }}>
-              📥
+        <div style={{ width: "100%", maxWidth: "500px" }}>
+          
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "48px" }}>
+             <div style={{ color: "#c8a96e", fontSize: "10px", letterSpacing: "3px", textTransform: "uppercase", marginBottom: "16px", fontWeight: 600 }}>
+              Database Synchronization
             </div>
-            <h1 style={{ fontSize: "28px", fontWeight: 800, letterSpacing: "-0.5px", margin: "0 0 8px" }}>
-              Sync Faculty Profile
+            <h1 className="playfair" style={{ fontSize: "42px", fontWeight: 700, margin: "0 0 16px", lineHeight: 1.1 }}>
+              Import Faculty <br />
+              <span style={{ fontStyle: "italic", color: "#c8a96e" }}>Records</span>
             </h1>
-            <p style={{ color: "#71717a", fontSize: "15px" }}>
-              Add new faculty members directly from the SRM database.
+            <p style={{ color: "#555", fontSize: "15px", lineHeight: 1.6, maxWidth: "400px", margin: "0 auto" }}>
+              Sync profiles directly from official institutional portals to ensure data integrity.
             </p>
           </div>
 
-          {/* Instructions Card */}
+          {/* Card */}
           <div style={{
-            backgroundColor: "#111113",
-            border: "1px solid #1f1f22",
-            borderRadius: "24px",
-            padding: "24px",
-            boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
+            backgroundColor: "#0d0d0d",
+            border: "1px solid #1a1a1a",
+            padding: "40px",
+            boxShadow: "0 30px 60px rgba(0,0,0,0.5)"
           }}>
-            <div style={{ marginBottom: "24px" }}>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>
-                Profile URL
+            <div style={{ marginBottom: "32px" }}>
+              <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>
+                Official Profile URL
               </label>
               <input
                 type="text"
-                placeholder="https://www.srmist.edu.in/faculty/..."
+                className="import-input"
+                placeholder="https://institution.edu.in/faculty/..."
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                style={{
-                  width: "100%",
-                  backgroundColor: "#0a0a0a",
-                  border: "1px solid #27272a",
-                  borderRadius: "12px",
-                  color: "white",
-                  padding: "14px 16px",
-                  fontSize: "14px",
-                  outline: "none",
-                  transition: "border-color 0.2s"
-                }}
+                style={{ backgroundColor: "#080808" }}
               />
             </div>
 
             <button
               onClick={handleImport}
               disabled={loading || !url}
-              style={{
-                width: "100%",
-                backgroundColor: url ? "#ef4444" : "#27272a",
-                color: url ? "white" : "#71717a",
-                padding: "16px",
-                borderRadius: "14px",
-                fontWeight: 700,
-                fontSize: "16px",
-                border: "none",
-                cursor: url ? "pointer" : "not-allowed",
-                transition: "all 0.2s"
-              }}
+              className="btn-gold"
             >
-              {loading ? "Synchronizing..." : "Import Profile"}
+              {loading ? "Synchronizing..." : "Initialize Import"}
             </button>
 
-            {/* Step Guide */}
-            <div style={{ marginTop: "24px", paddingTop: "24px", borderTop: "1px solid #1f1f22" }}>
-               <h4 style={{ fontSize: "11px", fontWeight: 700, color: "#3f3f46", marginBottom: "12px", textTransform: "uppercase" }}>Quick Guide</h4>
-               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {/* Guide */}
+            <div style={{ marginTop: "40px", paddingTop: "32px", borderTop: "1px solid #1a1a1a" }}>
+               <h4 className="playfair" style={{ fontSize: "18px", color: "#f0ede8", marginBottom: "16px", fontStyle: "italic" }}>Submission Protocol</h4>
+               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {[
-                    "Go to SRM Staff Finder",
-                    "Search for the faculty member",
-                    "Copy their profile URL from the browser bar",
-                    "Paste it here to sync their data"
+                    "Locate the faculty member on your college's official staff directory.",
+                    "Ensure you are viewing their individual profile page.",
+                    "Copy the full URL from your browser's address bar.",
+                    "Paste the link above to begin the automated extraction."
                   ].map((step, i) => (
-                    <div key={i} style={{ display: "flex", gap: "10px", alignItems: "start" }}>
-                      <span style={{ fontSize: "12px", color: "#ef4444", fontWeight: "bold" }}>{i + 1}.</span>
-                      <p style={{ fontSize: "12px", color: "#a1a1aa", margin: 0 }}>{step}</p>
+                    <div key={i} style={{ display: "flex", gap: "16px", alignItems: "start" }}>
+                      <span style={{ fontSize: "11px", color: "#c8a96e", fontWeight: "bold", marginTop: "2px" }}>0{i + 1}</span>
+                      <p style={{ fontSize: "13px", color: "#666", margin: 0, lineHeight: 1.5 }}>{step}</p>
                     </div>
                   ))}
                </div>
             </div>
           </div>
 
-          <p style={{ textAlign: "center", marginTop: "24px", fontSize: "13px", color: "#3f3f46" }}>
-            Data is fetched directly from the official university portal.
+          <p style={{ textAlign: "center", marginTop: "32px", fontSize: "11px", color: "#333", letterSpacing: "0.5px" }}>
+            All data is sourced directly from institutional domains. <br />
+            We do not store cookies from external portals.
           </p>
         </div>
-      </div>
-
-      {/* Floating Bottom Nav (Consistent) */}
-      <div style={{
-        position: "fixed",
-        bottom: "24px", left: "50%", transform: "translateX(-50%)",
-        backgroundColor: "rgba(24, 24, 27, 0.8)", backdropFilter: "blur(20px)",
-        border: "1px solid #3f3f46", borderRadius: "30px",
-        display: "flex", padding: "8px 12px", gap: "8px"
-      }}>
-        <Link href="/" style={{ padding: "8px 16px", borderRadius: "20px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px" }}>Home</Link>
-        <Link href="/incidents" style={{ padding: "8px 16px", borderRadius: "20px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px" }}>Feed</Link>
       </div>
     </div>
   )
