@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
               (sum, r) =>
                 sum +
                 (r.teachingClarity + r.approachability + r.gradingFairness +
-                  r.punctuality + r.partiality + r.behaviour) / 6,
+                  r.punctuality + (6 - r.partiality) + r.behaviour) / 6,
               0
             ) / count
           ).toFixed(1)
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
       name: f.name,
       designation: f.designation,
       department: f.department,
-      photoUrl: f.photoUrl,
+      // photoUrl removed to prevent build errors
       ratingCount: count,
       avgRating: avg,
     }
