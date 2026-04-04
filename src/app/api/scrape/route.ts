@@ -20,11 +20,16 @@ export async function POST(req: Request) {
     const name = $("h1").first().text().trim();
     const designation = $(".faculty-designation").first().text().trim() || "Assistant Professor";
     const department = $(".faculty-dept").first().text().trim() || "Computing Technologies";
-    const photoUrl = $(".faculty-image img").attr("src") || 
-                     "https://www.srmist.edu.in/wp-content/uploads/2023/01/default-profile.jpg";
+    
+    // photoUrl logic removed to match new database schema
 
     const faculty = await prisma.faculty.create({
-      data: { name, designation, department, profileUrl: url, photoUrl },
+      data: { 
+        name, 
+        designation, 
+        department, 
+        profileUrl: url 
+      },
     });
 
     return NextResponse.json(faculty);
