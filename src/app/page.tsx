@@ -2,230 +2,472 @@
 
 import { useState, useEffect } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useFaculty } from "@/hooks/useFaculty"  // ← new
+
+type College = {
+  id: string
+  name: string
+  city: string | null
+  state: string | null
+  country: string
+  website: string
+  _count: { faculty: number }
+}
 
 export default function HomePage() {
   const { data: session } = useSession()
-  const router = useRouter()
-  const [mounted, setMounted] = useState(false)
+  const [colleges, setColleges] = useState<College[]>([])
+  const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState("")
-  const [selectedStars, setSelectedStars] = useState<number | null>(null)
-  const [showRedFlags, setShowRedFlags] = useState(false)
-  const [importUrl, setImportUrl] = useState("")
-  const [importing, setImporting] = useState(false)
-  const [importMsg, setImportMsg] = useState("")
-  const [showImport, setShowImport] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [showSubmit, setShowSubmit] = useState(false)
 
-  // ✅ Replaced raw fetch + useState with cached SWR hook.
-  // The data is now shared across all components using useFaculty().
-  // Navigating away and back reuses the in-memory cache (no extra API call
-  // for 5 minutes). `refresh` lets us pull fresh data after an import.
-  const { faculty: allFaculty, isLoading: loading, refresh } = useFaculty()
+  // Submit form state
+  const [form, setForm] = useState({
+    name: "", website: "", emailDomain: "", city: "", state: "", country: "India",
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [submitMsg, setSubmitMsg] = useState("")
+  const [submitError, setSubmitError] = useState("")
 
   useEffect(() => {
     setMounted(true)
+    fetchColleges()
   }, [])
 
-  async function handleImport() {
-    if (!importUrl) return
-    setImporting(true)
-    setImportMsg("")
-    const res = await fetch("/api/import-faculty", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: importUrl }),
-    })
-    const data = await res.json()
-    if (data.facultyId) {
-      setImportMsg("✓ Profile Sync Successful")
-      setImportUrl("")
-      // Invalidate SWR cache so the new faculty appears in the list
-      await refresh()
-      router.push(`/faculty/${data.facultyId}`)
-    } else {
-      setImportMsg(`✗ ${data.error || "Import failed"}`)
+  async function fetchColleges(q = "") {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/colleges${q ? `?q=${encodeURIComponent(q)}` : ""}`)
+      const data = await res.json()
+      setColleges(data.colleges || [])
+    } finally {
+      setLoading(false)
     }
-    setImporting(false)
   }
 
-  const isFiltering = query.trim().length > 0 || selectedStars !== null || showRedFlags
-
-  const filteredFaculty = allFaculty.filter((f) => {
-    const q = query.toLowerCase()
-    const matchesSearch =
-      f.name?.toLowerCase().includes(q) || f.department?.toLowerCase().includes(q)
-    const rating = parseFloat(f.avgRating || "0")
-    const matchesStars =
-      selectedStars === null || (rating >= selectedStars && rating < selectedStars + 1)
-    const matchesRedFlag = !showRedFlags || (rating > 0 && rating < 2.5)
-    return matchesSearch && matchesStars && matchesRedFlag
-  })
-
-  const sortedFaculty = [...filteredFaculty].sort((a, b) => {
-    const ratingA = parseFloat(a.avgRating || "0")
-    const ratingB = parseFloat(b.avgRating || "0")
-    if (showRedFlags) return ratingA - ratingB
-    if (ratingA !== ratingB) return ratingB - ratingA
-    return (b.ratingCount || 0) - (a.ratingCount || 0)
-  })
-
-  const displayList = isFiltering ? sortedFaculty : sortedFaculty.slice(0, 50)
-
-  const getRatingStyle = (avg: string) => {
-    const n = parseFloat(avg)
-    if (n >= 4.0) return { color: "#00ff88", bg: "rgba(0, 255, 136, 0.1)" }
-    if (n >= 3.0) return { color: "#FFD700", bg: "rgba(255, 215, 0, 0.1)" }
-    if (n >= 2.0) return { color: "#FF8C00", bg: "rgba(255, 140, 0, 0.1)" }
-    return { color: "#ff4444", bg: "rgba(255, 68, 68, 0.1)" }
+  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
+    const q = e.target.value
+    setQuery(q)
+    const timer = setTimeout(() => fetchColleges(q), 300)
+    return () => clearTimeout(timer)
   }
 
-  if (!mounted) return <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a" }} />
+  async function handleSubmit() {
+    if (!session) { signIn("google"); return }
+    if (!form.name.trim() || !form.website.trim()) {
+      setSubmitError("College name and website are required.")
+      return
+    }
+    setSubmitting(true)
+    setSubmitError("")
+    setSubmitMsg("")
+    try {
+      const res = await fetch("/api/colleges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSubmitMsg("✓ Submitted! We'll review and approve it within 24 hours.")
+        setForm({ name: "", website: "", emailDomain: "", city: "", state: "", country: "India" })
+        setShowSubmit(false)
+      } else {
+        setSubmitError(data.error || "Submission failed.")
+      }
+    } catch {
+      setSubmitError("Something went wrong.")
+    }
+    setSubmitting(false)
+  }
+
+  if (!mounted) return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
 
   return (
     <div style={{
-      minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5",
-      fontFamily: "Inter, -apple-system, sans-serif", position: "relative"
+      minHeight: "100vh",
+      backgroundColor: "#080808",
+      color: "#f0ede8",
+      fontFamily: "'Georgia', 'Times New Roman', serif",
+      position: "relative",
+      overflow: "hidden",
     }}>
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.4s ease forwards; }
-        input:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); outline: none; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .nav-item:active { transform: scale(0.95); transition: transform 0.1s; }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap');
+        
+        * { box-sizing: border-box; }
+        
+        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
+        .dmsans { font-family: 'DM Sans', sans-serif !important; }
+        
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        
+        .fade-up { animation: fadeUp 0.6s ease forwards; }
+        .fade-up-2 { animation: fadeUp 0.6s 0.1s ease forwards; opacity: 0; }
+        .fade-up-3 { animation: fadeUp 0.6s 0.2s ease forwards; opacity: 0; }
+        
+        .college-card {
+          background: #0f0f0f;
+          border: 1px solid #1e1e1e;
+          border-radius: 4px;
+          padding: 20px 24px;
+          text-decoration: none;
+          display: block;
+          transition: border-color 0.2s, background 0.2s;
+          position: relative;
+          overflow: hidden;
+        }
+        .college-card::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 3px;
+          background: #c8a96e;
+          transform: scaleY(0);
+          transition: transform 0.2s;
+        }
+        .college-card:hover {
+          border-color: #2a2a2a;
+          background: #111;
+        }
+        .college-card:hover::before {
+          transform: scaleY(1);
+        }
+        
+        .search-input {
+          background: #0f0f0f;
+          border: 1px solid #1e1e1e;
+          border-radius: 2px;
+          color: #f0ede8;
+          padding: 14px 20px;
+          font-size: 15px;
+          width: 100%;
+          outline: none;
+          font-family: 'DM Sans', sans-serif;
+          transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: #c8a96e; }
+        .search-input::placeholder { color: #444; }
+        
+        .form-input {
+          background: #0a0a0a;
+          border: 1px solid #1e1e1e;
+          border-radius: 2px;
+          color: #f0ede8;
+          padding: 12px 16px;
+          font-size: 14px;
+          width: 100%;
+          outline: none;
+          font-family: 'DM Sans', sans-serif;
+          transition: border-color 0.2s;
+        }
+        .form-input:focus { border-color: #c8a96e; }
+        .form-input::placeholder { color: #333; }
+        
+        .btn-gold {
+          background: #c8a96e;
+          color: #080808;
+          border: none;
+          padding: 14px 28px;
+          font-family: 'DM Sans', sans-serif;
+          font-weight: 600;
+          font-size: 13px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          border-radius: 2px;
+          transition: background 0.2s, opacity 0.2s;
+          text-transform: uppercase;
+        }
+        .btn-gold:hover { background: #d4b87a; }
+        .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-ghost {
+          background: transparent;
+          color: #c8a96e;
+          border: 1px solid #c8a96e;
+          padding: 10px 20px;
+          font-family: 'DM Sans', sans-serif;
+          font-weight: 500;
+          font-size: 12px;
+          cursor: pointer;
+          border-radius: 2px;
+          transition: all 0.2s;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+        .btn-ghost:hover { background: rgba(200,169,110,0.1); }
+        
+        .divider {
+          border: none;
+          border-top: 1px solid #1a1a1a;
+          margin: 0;
+        }
+        
+        .tag {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 10px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #555;
+          font-weight: 500;
+        }
+        
+        .pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 10px;
+          border-radius: 100px;
+          font-size: 11px;
+          font-family: 'DM Sans', sans-serif;
+          font-weight: 500;
+        }
+
+        /* Decorative lines */
+        .deco-line {
+          width: 40px;
+          height: 1px;
+          background: #c8a96e;
+          display: inline-block;
+          vertical-align: middle;
+          margin: 0 12px;
+        }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #080808; }
+        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
       `}} />
 
-      <main style={{ paddingBottom: "200px", position: "relative", zIndex: 1 }} className="fade-in">
-        <nav style={{
-          backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
-          padding: "0 24px", height: "64px", display: "flex", alignItems: "center",
-          justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #27272a"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ background: "linear-gradient(135deg, #ef4444, #991b1b)", width: "32px", height: "32px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "14px" }}>R</div>
-            <span style={{ fontWeight: 700, letterSpacing: "-0.5px", fontSize: "18px" }}>RateMyFaculty</span>
-          </div>
-          <button onClick={() => (session ? signOut() : signIn("google"))} style={{ fontSize: "12px", fontWeight: 700, padding: "8px 16px", borderRadius: "20px", backgroundColor: "#fff", color: "#000", border: "none", cursor: "pointer" }}>
-            {session ? "LOGOUT" : "SIGN IN"}
-          </button>
-        </nav>
+      {/* Subtle grid texture */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        backgroundImage: "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
+        backgroundSize: "60px 60px"
+      }} />
 
-        {/* Hero Section */}
-        <div style={{ padding: "80px 24px 40px", textAlign: "center" }}>
-          <h1 style={{ fontSize: "clamp(48px, 9vw, 84px)", fontWeight: 800, letterSpacing: "-0.05em", lineHeight: "1.05", marginBottom: "12px", color: "#ffffff" }}>
-            Find the best <br /><span style={{ color: "#ef4444" }}>mentors at SRM.</span>
+      {/* NAV */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        backgroundColor: "rgba(8,8,8,0.95)",
+        backdropFilter: "blur(12px)",
+        borderBottom: "1px solid #1a1a1a",
+        padding: "0 32px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        height: "60px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span className="playfair" style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.3px", color: "#f0ede8" }}>
+            Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <Link href="/leaderboard" className="dmsans" style={{ fontSize: "12px", color: "#666", textDecoration: "none", letterSpacing: "1px", textTransform: "uppercase" }}>
+            Leaderboard
+          </Link>
+          <button
+            onClick={() => session ? signOut() : signIn("google")}
+            className="btn-ghost"
+            style={{ padding: "6px 14px", fontSize: "11px" }}
+          >
+            {session ? "Sign Out" : "Sign In"}
+          </button>
+        </div>
+      </nav>
+
+      <main style={{ position: "relative", zIndex: 1 }}>
+
+        {/* HERO */}
+        <div style={{ padding: "80px 32px 60px", maxWidth: "800px", margin: "0 auto" }}>
+          <div className="fade-up" style={{ marginBottom: "8px" }}>
+            <span className="tag">Student-powered reviews</span>
+          </div>
+
+          <h1 className="playfair fade-up-2" style={{
+            fontSize: "clamp(40px, 7vw, 72px)", fontWeight: 900,
+            lineHeight: 1.05, letterSpacing: "-1.5px",
+            margin: "16px 0 24px", color: "#f0ede8"
+          }}>
+            Find the best<br />
+            <span style={{ fontStyle: "italic", color: "#c8a96e" }}>mentors</span> at<br />
+            your college.
           </h1>
-          <p style={{ color: "#71717a", fontSize: "clamp(14px, 2vw, 17px)", maxWidth: "500px", margin: "0 auto 40px", lineHeight: "1.6" }}>
-            The community-driven platform for honest faculty reviews and academic insights.
+
+          <p className="dmsans fade-up-3" style={{
+            fontSize: "16px", color: "#666", lineHeight: "1.7",
+            maxWidth: "480px", marginBottom: "40px", fontWeight: 300,
+          }}>
+            Honest, anonymous faculty reviews from students across India. Search your college or submit one that's missing.
           </p>
 
-          <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+          {/* Search */}
+          <div className="fade-up-3" style={{ position: "relative", maxWidth: "560px" }}>
             <input
+              className="search-input"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name or department..."
-              style={{ width: "100%", backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "14px", color: "white", padding: "18px 24px", fontSize: "16px" }}
+              onChange={handleSearch}
+              placeholder="Search colleges by name or city..."
             />
-          </div>
-
-          <div className="hide-scrollbar" style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "24px", overflowX: "auto", paddingBottom: "10px" }}>
-            <button onClick={() => { setSelectedStars(null); setShowRedFlags(false); }} style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: (!selectedStars && !showRedFlags) ? "#ef4444" : "#27272a", backgroundColor: (!selectedStars && !showRedFlags) ? "rgba(239, 68, 68, 0.1)" : "transparent", color: (!selectedStars && !showRedFlags) ? "#ef4444" : "#71717a", cursor: "pointer" }}>TOP 50</button>
-            <button onClick={() => { setShowRedFlags(!showRedFlags); setSelectedStars(null); }} style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: showRedFlags ? "#ef4444" : "#27272a", backgroundColor: showRedFlags ? "rgba(239, 68, 68, 0.2)" : "transparent", color: showRedFlags ? "#fff" : "#ff4444", cursor: "pointer" }}>🚩 RED FLAGS</button>
-            {[4, 3, 2, 1].map((s) => (
-              <button key={s} onClick={() => { setSelectedStars(selectedStars === s ? null : s); setShowRedFlags(false); }} style={{ padding: "8px 16px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, border: "1px solid", borderColor: selectedStars === s ? "#ef4444" : "#27272a", backgroundColor: selectedStars === s ? "rgba(239, 68, 68, 0.1)" : "transparent", color: selectedStars === s ? "#ef4444" : "#71717a", cursor: "pointer", whiteSpace: "nowrap" }}>{s} STAR{s > 1 ? "s" : ""}</button>
-            ))}
+            <span style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)", color: "#333", fontSize: "16px" }}>⌕</span>
           </div>
         </div>
 
-        {/* Faculty List Section */}
-        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <h2 style={{ fontSize: "11px", fontWeight: 800, color: showRedFlags ? "#ef4444" : "#3f3f46", textTransform: "uppercase", letterSpacing: "1.5px" }}>
-              {showRedFlags ? "CRITICAL: LOW RATED" : isFiltering ? `MATCHING (${displayList.length})` : "TOP 50 MEMBERS"}
-            </h2>
-            <button onClick={() => setShowImport(!showImport)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer", fontWeight: 700 }}>
-              {showImport ? "CLOSE" : "+ IMPORT PROFILE"}
+        <hr className="divider" />
+
+        {/* COLLEGE LIST */}
+        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "48px 32px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
+            <div>
+              <span className="tag">
+                {query ? `results for "${query}"` : "all colleges"}
+              </span>
+            </div>
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                if (!session) { signIn("google"); return }
+                setShowSubmit(!showSubmit)
+                setSubmitMsg("")
+                setSubmitError("")
+              }}
+            >
+              {showSubmit ? "✕ Cancel" : "+ Submit College"}
             </button>
           </div>
 
-          {showImport && (
-            <div className="fade-in" style={{ backgroundColor: "#111113", border: "1px solid #27272a", borderRadius: "16px", padding: "20px", marginBottom: "24px" }}>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <input value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="SRM Profile URL..." style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #27272a", backgroundColor: "#000", color: "white", fontSize: "13px" }} />
-                <button onClick={handleImport} disabled={importing} style={{ backgroundColor: "#ef4444", color: "white", border: "none", padding: "0 20px", borderRadius: "10px", fontWeight: 700 }}>{importing ? "..." : "GO"}</button>
-              </div>
-              {importMsg && <p style={{ marginTop: "10px", fontSize: "12px", color: importMsg.includes("✓") ? "#10b981" : "#ef4444" }}>{importMsg}</p>}
+          {/* Submit message */}
+          {submitMsg && (
+            <div className="dmsans" style={{
+              backgroundColor: "rgba(200,169,110,0.08)", border: "1px solid rgba(200,169,110,0.3)",
+              borderRadius: "2px", padding: "14px 18px", marginBottom: "28px",
+              fontSize: "13px", color: "#c8a96e"
+            }}>
+              {submitMsg}
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {loading ? (
-              <div style={{ textAlign: "center", padding: "40px" }}>
-                <div style={{ width: "24px", height: "24px", border: "2px solid #27272a", borderTopColor: "#ef4444", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto" }} />
-              </div>
-            ) : (
-              displayList.map((f) => {
-                const rs = getRatingStyle(f.avgRating ?? "0")
-                return (
-                  <Link key={f.id} href={`/faculty/${f.id}`} style={{ display: "flex", alignItems: "center", padding: "16px", backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "16px", textDecoration: "none" }}>
-                    <div style={{ marginRight: "16px" }}>
-                      {f.photoUrl ? (
-                        <img src={`/api/image-proxy?url=${encodeURIComponent(f.photoUrl)}`} style={{ width: "44px", height: "44px", borderRadius: "10px", objectFit: "cover" }} alt={f.name} />
-                      ) : (
-                        <div style={{ width: "44px", height: "44px", borderRadius: "10px", backgroundColor: "#27272a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800 }}>{f.name?.[0]}</div>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</h3>
-                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#71717a" }}>{f.department}</p>
-                    </div>
-                    <div style={{ backgroundColor: rs.bg, color: rs.color, padding: "6px 12px", borderRadius: "10px", fontWeight: 800, fontSize: "16px" }}>{f.avgRating ?? "—"}</div>
-                  </Link>
-                )
-              })
-            )}
-          </div>
+          {/* Submit Form */}
+          {showSubmit && (
+            <div style={{
+              backgroundColor: "#0d0d0d", border: "1px solid #1e1e1e",
+              borderRadius: "4px", padding: "32px", marginBottom: "40px",
+            }}>
+              <h3 className="playfair" style={{ fontSize: "22px", fontWeight: 700, margin: "0 0 8px", color: "#f0ede8" }}>
+                Submit a College
+              </h3>
+              <p className="dmsans" style={{ fontSize: "13px", color: "#555", marginBottom: "28px", lineHeight: "1.6" }}>
+                After submission, we'll verify the college within 24 hours. You'll be able to add faculty and ratings once approved.
+              </p>
 
-          <div style={{ textAlign: "center", marginTop: "80px", padding: "0 20px" }}>
-            <p style={{ fontSize: "11px", color: "#3f3f46", lineHeight: "1.6", margin: "0 0 16px", fontWeight: 500 }}>
-              All content represents user-submitted opinions and experiences. We do not verify the accuracy of any claims.<br />
-              Users are solely responsible for their submissions. We reserve the right to remove content at our discretion.<br />
-              By using this platform, you agree to our Terms of Service.
-            </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-              <Link href="/privacy" style={{ fontSize: "11px", color: "#71717a", textDecoration: "underline", fontWeight: 700 }}>PRIVACY POLICY</Link>
-              <Link href="/terms" style={{ fontSize: "11px", color: "#71717a", textDecoration: "underline", fontWeight: 700 }}>TERMS OF SERVICE</Link>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>College Name *</label>
+                  <input className="form-input" placeholder="e.g. IIT Bombay" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>Official Website *</label>
+                  <input className="form-input" placeholder="https://college.edu.in" value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} />
+                </div>
+                <div>
+                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>Email Domain (optional)</label>
+                  <input className="form-input" placeholder="college.edu.in" value={form.emailDomain} onChange={e => setForm({ ...form, emailDomain: e.target.value })} />
+                </div>
+                <div>
+                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>City</label>
+                  <input className="form-input" placeholder="Chennai" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
+                </div>
+                <div>
+                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>State</label>
+                  <input className="form-input" placeholder="Tamil Nadu" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} />
+                </div>
+                <div>
+                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>Country</label>
+                  <input className="form-input" value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} />
+                </div>
+              </div>
+
+              {submitError && (
+                <p className="dmsans" style={{ color: "#c0392b", fontSize: "13px", marginTop: "16px" }}>
+                  {submitError}
+                </p>
+              )}
+
+              <div style={{ marginTop: "24px", display: "flex", gap: "12px", alignItems: "center" }}>
+                <button className="btn-gold" onClick={handleSubmit} disabled={submitting}>
+                  {submitting ? "Submitting..." : "Submit for Review"}
+                </button>
+                <span className="dmsans" style={{ fontSize: "11px", color: "#444" }}>
+                  We review all submissions within 24 hours.
+                </span>
+              </div>
             </div>
+          )}
+
+          {/* College Grid */}
+          {loading ? (
+            <div className="dmsans" style={{ padding: "60px 0", textAlign: "center", color: "#333", fontSize: "14px" }}>
+              Loading colleges...
+            </div>
+          ) : colleges.length === 0 ? (
+            <div style={{ padding: "60px 0", textAlign: "center" }}>
+              <p className="playfair" style={{ fontSize: "22px", color: "#2a2a2a", marginBottom: "12px", fontStyle: "italic" }}>
+                No colleges found.
+              </p>
+              <p className="dmsans" style={{ fontSize: "13px", color: "#444" }}>
+                Be the first to submit yours.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1px", border: "1px solid #1a1a1a" }}>
+              {colleges.map((c, i) => (
+                <Link key={c.id} href={`/colleges/${c.id}`} className="college-card" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", borderTop: i === 0 ? "none" : "1px solid #141414", borderBottom: "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <h2 className="playfair" style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 6px", color: "#f0ede8", letterSpacing: "-0.3px" }}>
+                        {c.name}
+                      </h2>
+                      <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+                        {(c.city || c.state) && (
+                          <span className="dmsans" style={{ fontSize: "12px", color: "#555" }}>
+                            {[c.city, c.state].filter(Boolean).join(", ")}
+                          </span>
+                        )}
+                        <span className="dmsans" style={{ fontSize: "11px", color: "#c8a96e", letterSpacing: "0.5px" }}>
+                          {c._count.faculty} {c._count.faculty === 1 ? "faculty" : "faculty members"}
+                        </span>
+                      </div>
+                    </div>
+                    <span style={{ color: "#333", fontSize: "18px", flexShrink: 0, marginLeft: "16px" }}>→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* FOOTER */}
+        <div style={{ borderTop: "1px solid #141414", padding: "32px", maxWidth: "800px", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+            <p className="dmsans" style={{ fontSize: "11px", color: "#333", lineHeight: "1.6" }}>
+              All content represents user opinions. We do not verify claims.{" "}
+              <Link href="/terms" style={{ color: "#555", textDecoration: "underline" }}>Terms</Link>
+              {" · "}
+              <Link href="/privacy" style={{ color: "#555", textDecoration: "underline" }}>Privacy</Link>
+            </p>
+            <span className="playfair" style={{ fontSize: "13px", color: "#2a2a2a", fontStyle: "italic" }}>
+              RateMyFaculty
+            </span>
           </div>
         </div>
-      </main>
 
-      {/* FIXED NAVIGATION */}
-      <div style={{
-        position: "fixed", bottom: "32px", left: "50%", transform: "translateX(-50%)",
-        backgroundColor: "rgba(24, 24, 27, 0.95)", backdropFilter: "blur(20px)",
-        border: "1px solid #3f3f46", borderRadius: "40px", display: "flex",
-        padding: "8px", gap: "4px", zIndex: 9999, pointerEvents: "auto",
-        boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
-      }}>
-        {[
-          { href: "/", label: "Home" },
-          { href: "/today", label: "Today" },
-          { href: "/incidents", label: "Feed" },
-          { href: "/rooms", label: "Rooms" },
-        ].map((item) => (
-          <Link key={item.label} href={item.href} className="nav-item" style={{
-            padding: "10px 22px", borderRadius: "30px",
-            color: item.href === "/" ? "#fff" : "#a1a1aa",
-            backgroundColor: item.href === "/" ? "#ef4444" : "transparent",
-            textDecoration: "none", fontSize: "13px", fontWeight: 700,
-            cursor: "pointer", display: "inline-block"
-          }}>
-            {item.label}
-          </Link>
-        ))}
-      </div>
+      </main>
     </div>
   )
 }

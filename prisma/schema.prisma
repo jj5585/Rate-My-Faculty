@@ -13,9 +13,11 @@ model User {
   name          String?
   image         String?
   emailVerified DateTime?
+  isAdmin       Boolean   @default(false)
   createdAt     DateTime  @default(now())
   accounts      Account[]
   sessions      Session[]
+  collegeSubmissions College[]
 }
 
 model Account {
@@ -52,6 +54,38 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ─────────────────────────────────────────────
+// COLLEGE
+// ─────────────────────────────────────────────
+
+model College {
+  id            String        @id @default(cuid())
+  name          String
+  website       String
+  emailDomain   String?       // e.g. "srmist.edu.in" — optional, for future domain-gating
+  city          String?
+  state         String?
+  country       String        @default("India")
+  status        CollegeStatus @default(PENDING)
+  submittedById String
+  submittedBy   User          @relation(fields: [submittedById], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  faculty       Faculty[]
+  incidents     Incident[]
+  rooms         GossipRoom[]
+}
+
+enum CollegeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─────────────────────────────────────────────
+// FACULTY  (collegeId nullable → existing SRMIST rows still valid)
+// ─────────────────────────────────────────────
+
 model Faculty {
   id               String   @id @default(cuid())
   name             String
@@ -59,11 +93,19 @@ model Faculty {
   department       String?
   experience       String?
   researchInterest String?
-  photoUrl         String?
-  profileUrl       String   @unique
+  // photoUrl removed — no longer storing faculty images
+  profileUrl       String?  // now optional — not all colleges have scraped profiles
+  collegeId        String?  // null = legacy SRMIST faculty
+  college          College? @relation(fields: [collegeId], references: [id])
   createdAt        DateTime @default(now())
   ratings          Rating[]
+
+  @@unique([profileUrl]) // still unique when provided
 }
+
+// ─────────────────────────────────────────────
+// RATING
+// ─────────────────────────────────────────────
 
 model Rating {
   id              String         @id @default(cuid())
@@ -82,16 +124,30 @@ model Rating {
   reports         RatingReport[]
 }
 
+model RatingReport {
+  id         String   @id @default(cuid())
+  ratingId   String
+  rating     Rating   @relation(fields: [ratingId], references: [id], onDelete: Cascade)
+  reportHash String   @unique
+  createdAt  DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// CAMPUS FEED (now scoped to a college)
+// ─────────────────────────────────────────────
+
 model Incident {
-  id        String           @id @default(cuid())
-  content   String
-  category  String
-  upvotes   Int              @default(0)
-  userHash  String
-  hidden    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  expiresAt DateTime
-  reports   IncidentReport[]
+  id         String           @id @default(cuid())
+  content    String
+  category   String
+  upvotes    Int              @default(0)
+  userHash   String
+  hidden     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  expiresAt  DateTime
+  collegeId  String?          // null = legacy / global feed
+  college    College?         @relation(fields: [collegeId], references: [id])
+  reports    IncidentReport[]
 }
 
 model IncidentReport {
@@ -102,29 +158,27 @@ model IncidentReport {
   createdAt  DateTime @default(now())
 }
 
+// ─────────────────────────────────────────────
+// GOSSIP ROOMS (now scoped to a college)
+// ─────────────────────────────────────────────
+
 model GossipRoom {
-  id          String         @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
-  roomCode    String         @unique
+  roomCode    String          @unique
   password    String
   creatorHash String
-  createdAt   DateTime       @default(now())
+  collegeId   String?         // null = global room
+  college     College?        @relation(fields: [collegeId], references: [id])
+  createdAt   DateTime        @default(now())
   messages    GossipMessage[]
 }
 
 model GossipMessage {
-  id        String      @id @default(cuid())
+  id        String     @id @default(cuid())
   roomId    String
-  room      GossipRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room      GossipRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   content   String
   userHash  String
-  createdAt DateTime    @default(now())
-}
-
-model RatingReport {
-  id         String   @id @default(cuid())
-  ratingId   String
-  rating     Rating   @relation(fields: [ratingId], references: [id], onDelete: Cascade)
-  reportHash String   @unique
-  createdAt  DateTime @default(now())
+  createdAt DateTime   @default(now())
 }
