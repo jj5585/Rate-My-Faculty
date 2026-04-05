@@ -4,7 +4,6 @@ import Link from "next/link";
 import ShareButton from "@/components/ShareButton";
 import RatingReportButton from "@/components/RatingReportButton";
 
-// On-demand revalidation to ensure ratings update
 export const revalidate = 0;
 
 export default async function FacultyProfile({
@@ -16,9 +15,9 @@ export default async function FacultyProfile({
 
   const faculty = await prisma.faculty.findUnique({
     where: { id },
-    include: { 
+    include: {
       ratings: { orderBy: { createdAt: "desc" } },
-      college: true
+      college: true,
     },
   });
 
@@ -27,201 +26,346 @@ export default async function FacultyProfile({
   const totalReviews = faculty.ratings.length;
 
   const getAvg = (key: string) => {
-    if (totalReviews === 0) return "0.0";
-    const sum = faculty.ratings.reduce((acc: any, r: any) => {
-      const val = r[key] || 0;
-      // Invert partiality so 1 is bad and 5 is good for the average
-      return acc + (key === 'partiality' ? (6 - val) : val);
-    }, 0);
-    return (sum / totalReviews).toFixed(1);
+    if (totalReviews === 0) return 0;
+    const sum = faculty.ratings.reduce((acc: number, r: any) => acc + (r[key] || 0), 0);
+    return sum / totalReviews;
   };
 
   const metrics = [
-    { label: "Teaching Clarity", key: "teachingClarity" },
-    { label: "Approachability", key: "approachability" },
-    { label: "Grading Fairness", key: "gradingFairness" },
-    { label: "Punctuality", key: "punctuality" },
-    { label: "Non-Partiality", key: "partiality" },
+    { label: "Teaching", key: "teachingClarity" },
+    { label: "Approachable", key: "approachability" },
+    { label: "Fair Grading", key: "gradingFairness" },
+    { label: "Punctual", key: "punctuality" },
+    { label: "No Bias", key: "partiality" },
     { label: "Behaviour", key: "behaviour" },
   ];
 
   const overallAvg =
     totalReviews === 0
       ? null
-      : (
-          metrics.reduce((sum, m) => sum + parseFloat(getAvg(m.key)), 0) /
-          metrics.length
-        ).toFixed(1);
+      : metrics.reduce((sum, m) => sum + getAvg(m.key), 0) / metrics.length;
+
+  const writtenReviews = faculty.ratings.filter((r) => r.review && r.review.trim().length > 0);
+
+  // Color scale: red → orange → yellow → green
+  function scoreColor(val: number) {
+    if (val === 0) return { text: "#2a2a2a", bar: "#1a1a1a" };
+    if (val >= 4.5) return { text: "#4ade80", bar: "#4ade80" };
+    if (val >= 3.5) return { text: "#facc15", bar: "#facc15" };
+    if (val >= 2.5) return { text: "#fb923c", bar: "#fb923c" };
+    return { text: "#f87171", bar: "#f87171" };
+  }
+
+  const overall = overallAvg ?? 0;
+  const overallColor = scoreColor(overall);
 
   return (
     <div style={{
       minHeight: "100vh",
       backgroundColor: "#080808",
       color: "#f0ede8",
-      fontFamily: "'DM Sans', sans-serif",
-      position: "relative",
     }}>
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap');
-        
-        .playfair { font-family: 'Playfair Display', serif !important; }
-        .dmsans { font-family: 'DM Sans', sans-serif !important; }
-        
-        .metric-card {
-          background: #0d0d0d;
-          border: 1px solid #1a1a1a;
-          padding: 24px;
-          transition: border-color 0.3s;
-        }
-        .metric-card:hover { border-color: #c8a96e; }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
-        .review-row {
-          border-bottom: 1px solid #1a1a1a;
-          padding: 40px 0;
-        }
-        
-        .btn-gold {
-          background: #c8a96e;
-          color: #080808;
-          border: none;
-          padding: 14px 28px;
-          font-family: 'DM Sans', sans-serif;
-          font-weight: 600;
-          font-size: 13px;
-          letter-spacing: 1px;
-          cursor: pointer;
-          border-radius: 2px;
-          transition: all 0.2s;
-          text-transform: uppercase;
-          text-decoration: none;
-          display: inline-block;
-        }
-        .btn-gold:hover { background: #d4b87a; transform: translateY(-1px); }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .nav-island {
+        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
+        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
+
+        /* Bar fill animation */
+        @keyframes fillBar {
+          from { width: 0%; }
+          to   { width: var(--target-width); }
+        }
+        .bar-fill {
+          animation: fillBar 0.7s ease forwards;
+          animation-delay: var(--delay, 0s);
+          width: 0%;
+        }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.5s ease forwards; }
+
+        /* Sticky nav */
+        .top-nav {
           position: sticky; top: 0; z-index: 100;
-          background: rgba(8,8,8,0.9);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid #1a1a1a;
-          padding: 0 32px;
-          height: 60px;
-          display: flex; alignItems: center; justifyContent: space-between;
+          background: rgba(8,8,8,0.96);
+          backdrop-filter: blur(16px);
+          border-bottom: 1px solid #141414;
+          height: 52px;
+          display: flex; align-items: center;
+          justify-content: space-between;
+          padding: 0 20px;
+        }
+
+        /* Metric row */
+        .metric-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 0;
+          border-bottom: 1px solid #111;
+        }
+        .metric-row:last-child { border-bottom: none; }
+
+        .bar-track {
+          flex: 1;
+          height: 5px;
+          background: #141414;
+          border-radius: 3px;
+          overflow: hidden;
+        }
+
+        /* Review card */
+        .review-card {
+          background: #0d0d0d;
+          border: 1px solid #141414;
+          border-radius: 12px;
+          padding: 18px;
+          margin-bottom: 10px;
+        }
+
+        /* Rate button */
+        .rate-btn {
+          display: block;
+          text-align: center;
+          background: #f0ede8;
+          color: #080808;
+          font-family: 'DM Sans', sans-serif;
+          font-weight: 700;
+          font-size: 14px;
+          letter-spacing: 0.5px;
+          padding: 15px;
+          border-radius: 10px;
+          text-decoration: none;
+          transition: background 0.15s;
+        }
+        .rate-btn:active { background: #d4d1cc; }
+
+        /* Score badge */
+        .score-badge {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 3px;
         }
       `}} />
 
-      {/* Nav */}
-      <nav className="nav-island">
-        <Link href={faculty.collegeId ? `/colleges/${faculty.collegeId}` : "/"} style={{ color: "#c8a96e", textDecoration: "none", fontSize: "11px", fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase" }}>
+      {/* ── TOP NAV ── */}
+      <nav className="top-nav">
+        <Link
+          href={faculty.collegeId ? `/colleges/${faculty.collegeId}` : "/"}
+          className="dmsans"
+          style={{ fontSize: "13px", color: "#888", textDecoration: "none" }}
+        >
           ← {faculty.college?.name || "Directory"}
         </Link>
-        <span className="playfair" style={{ fontSize: "16px", fontWeight: 700 }}>
+        <span className="playfair" style={{ fontSize: "15px", fontWeight: 700 }}>
           Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
         </span>
-        <div style={{ width: "60px" }} /> {/* Spacer */}
+        <div style={{ width: "60px" }} />
       </nav>
 
-      <main style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 32px" }}>
-        
-        {/* Profile Header */}
-        <div style={{ textAlign: "center", marginBottom: "80px" }}>
-          <div style={{ 
-            width: "80px", height: "80px", border: "1px solid #c8a96e", 
-            borderRadius: "50%", margin: "0 auto 32px", display: "flex", 
-            alignItems: "center", justifyContent: "center", fontSize: "32px",
-            color: "#c8a96e", background: "rgba(200,169,110,0.03)"
-          }} className="playfair">
+      {/* ── HERO — NAME + OVERALL SCORE ── */}
+      <div className="fade-up" style={{
+        padding: "28px 20px 24px",
+        borderBottom: "1px solid #141414",
+      }}>
+        {/* Initial avatar */}
+        <div style={{
+          width: "52px", height: "52px", borderRadius: "10px",
+          background: "rgba(200,169,110,0.1)", border: "1px solid rgba(200,169,110,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          marginBottom: "16px",
+        }}>
+          <span className="playfair" style={{ fontSize: "24px", color: "#c8a96e", fontWeight: 700 }}>
             {faculty.name.charAt(0)}
+          </span>
+        </div>
+
+        <h1 className="playfair" style={{
+          fontSize: "clamp(22px, 6vw, 32px)",
+          fontWeight: 900, letterSpacing: "-0.5px",
+          lineHeight: 1.1, marginBottom: "6px",
+        }}>
+          {faculty.name}
+        </h1>
+
+        <p className="dmsans" style={{ fontSize: "13px", color: "#666", marginBottom: "20px" }}>
+          {[faculty.designation, faculty.department].filter(Boolean).join(" · ")}
+        </p>
+
+        {/* Overall score — BIG */}
+        {overallAvg !== null ? (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: "12px" }}>
+            <span className="playfair" style={{
+              fontSize: "72px", fontWeight: 900, lineHeight: 1,
+              color: overallColor.text,
+            }}>
+              {overall.toFixed(1)}
+            </span>
+            <div className="dmsans" style={{ paddingBottom: "8px" }}>
+              <div style={{ fontSize: "13px", color: "#555", marginBottom: "2px" }}>out of 5.0</div>
+              <div style={{ fontSize: "12px", color: "#444" }}>
+                {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
+              </div>
+            </div>
           </div>
-          
-          <span style={{ color: "#555", fontSize: "10px", letterSpacing: "3px", textTransform: "uppercase" }}>Faculty Profile</span>
-          <h1 className="playfair" style={{ fontSize: "clamp(32px, 5vw, 56px)", margin: "16px 0", fontWeight: 700 }}>
-            {faculty.name}
-          </h1>
-          <p className="dmsans" style={{ color: "#888", fontSize: "16px", fontWeight: 300 }}>
-            {faculty.designation} <span style={{ color: "#c8a96e", margin: "0 8px" }}>/</span> {faculty.department}
+        ) : (
+          <p className="dmsans" style={{ fontSize: "14px", color: "#444", fontStyle: "italic" }}>
+            No ratings yet — be the first.
           </p>
-          
-          {overallAvg && (
-            <div style={{ marginTop: "40px" }}>
-              <span className="playfair" style={{ fontSize: "72px", fontWeight: 700, color: "#c8a96e" }}>{overallAvg}</span>
-              <span style={{ color: "#333", fontSize: "20px", marginLeft: "12px" }}>out of 5.0</span>
-            </div>
-          )}
-        </div>
+        )}
+      </div>
 
-        {/* Action Bar */}
-        <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginBottom: "100px" }}>
-          <Link href={`/rate/${faculty.id}`} className="btn-gold">
-            Rate this Faculty
+      {/* ── 6 METRICS — ALL VISIBLE AT ONCE ── */}
+      <div style={{ padding: "20px 20px 0" }}>
+        <p className="dmsans" style={{
+          fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
+          color: "#444", marginBottom: "12px",
+        }}>
+          Breakdown
+        </p>
+        <div style={{ background: "#0d0d0d", border: "1px solid #141414", borderRadius: "12px", padding: "4px 16px" }}>
+          {metrics.map((m, i) => {
+            const val = getAvg(m.key);
+            const pct = (val / 5) * 100;
+            const col = scoreColor(val);
+            return (
+              <div key={m.key} className="metric-row">
+                {/* Label */}
+                <span className="dmsans" style={{
+                  fontSize: "13px", color: "#888", fontWeight: 500,
+                  width: "90px", flexShrink: 0,
+                }}>
+                  {m.label}
+                </span>
+
+                {/* Bar */}
+                <div className="bar-track">
+                  <div
+                    className="bar-fill"
+                    style={{
+                      "--target-width": `${pct}%`,
+                      "--delay": `${i * 0.08}s`,
+                      height: "100%",
+                      borderRadius: "3px",
+                      background: col.bar,
+                    } as React.CSSProperties}
+                  />
+                </div>
+
+                {/* Score */}
+                <span className="dmsans" style={{
+                  fontSize: "15px", fontWeight: 700,
+                  color: col.text, width: "32px",
+                  textAlign: "right", flexShrink: 0,
+                }}>
+                  {totalReviews === 0 ? "—" : val.toFixed(1)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── RATE BUTTON ── */}
+      <div style={{ padding: "20px" }}>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <Link href={`/rate/${faculty.id}`} className="rate-btn" style={{ flex: 1 }}>
+            Rate This Faculty
           </Link>
-          <ShareButton name={faculty.name} avgRating={overallAvg} />
+          <ShareButton name={faculty.name} avgRating={overallAvg ? overall.toFixed(1) : null} />
         </div>
+      </div>
 
-        {/* Metrics Grid */}
-        <div style={{ marginBottom: "100px" }}>
-          <h2 className="playfair" style={{ fontSize: "24px", marginBottom: "32px", fontStyle: "italic" }}>Performance Metrics</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1px", background: "#1a1a1a", border: "1px solid #1a1a1a" }}>
-            {metrics.map((m) => (
-              <div key={m.key} style={{ background: "#080808", padding: "32px" }}>
-                <p style={{ color: "#555", fontSize: "10px", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "12px" }}>{m.label}</p>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <span className="playfair" style={{ fontSize: "28px", color: "#f0ede8" }}>{getAvg(m.key)}</span>
-                  <span style={{ color: "#222", fontSize: "12px" }}>/ 5.0</span>
-                </div>
-              </div>
-            ))}
+      {/* ── WRITTEN REVIEWS ONLY ── */}
+      <div style={{ padding: "0 20px 100px" }}>
+        <p className="dmsans" style={{
+          fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
+          color: "#444", marginBottom: "14px",
+        }}>
+          Student Comments ({writtenReviews.length})
+        </p>
+
+        {writtenReviews.length === 0 ? (
+          <div style={{
+            border: "1px dashed #1a1a1a", borderRadius: "12px",
+            padding: "40px 20px", textAlign: "center",
+          }}>
+            <p className="playfair" style={{ fontSize: "18px", color: "#2a2a2a", fontStyle: "italic" }}>
+              No written comments yet.
+            </p>
+            <p className="dmsans" style={{ fontSize: "12px", color: "#333", marginTop: "8px" }}>
+              Leave a review to help other students.
+            </p>
           </div>
-        </div>
-
-        {/* Reviews Section */}
-        <div>
-          <h2 className="playfair" style={{ fontSize: "24px", marginBottom: "12px", fontStyle: "italic" }}>Student Testimonials</h2>
-          <p style={{ color: "#555", fontSize: "13px", marginBottom: "40px" }}>Chronological feedback from verified sessions.</p>
-
-          {faculty.ratings.length === 0 ? (
-            <div style={{ padding: "60px 0", textAlign: "center", border: "1px dashed #1a1a1a" }}>
-              <p className="playfair" style={{ color: "#333", fontSize: "18px" }}>No reviews recorded yet.</p>
-            </div>
-          ) : (
-            faculty.ratings.map((r) => (
-              <div key={r.id} className="review-row">
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "24px" }}>
-                  <span style={{ color: "#c8a96e", fontSize: "10px", fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase" }}>Anonymous Review</span>
-                  <span style={{ color: "#333", fontSize: "11px" }}>{new Date(r.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+        ) : (
+          writtenReviews.map((r) => {
+            const reviewOverall = (
+              (r.teachingClarity + r.approachability + r.gradingFairness +
+               r.punctuality + r.partiality + r.behaviour) / 6
+            );
+            const rc = scoreColor(reviewOverall);
+            return (
+              <div key={r.id} className="review-card">
+                {/* Top row: score + date */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div className="score-badge">
+                    <span className="playfair" style={{ fontSize: "22px", fontWeight: 700, color: rc.text }}>
+                      {reviewOverall.toFixed(1)}
+                    </span>
+                    <span className="dmsans" style={{ fontSize: "11px", color: "#333" }}>/5</span>
+                  </div>
+                  <span className="dmsans" style={{ fontSize: "11px", color: "#444" }}>
+                    {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric", month: "short", year: "numeric"
+                    })}
+                  </span>
                 </div>
-                
-                {r.review && (
-                  <p className="playfair" style={{ fontSize: "20px", lineHeight: "1.6", color: "#f0ede8", marginBottom: "32px", fontWeight: 400 }}>
-                    "{r.review}"
-                  </p>
-                )}
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                   <div style={{ display: "flex", gap: "24px" }}>
-                      <div>
-                        <p style={{ color: "#444", fontSize: "9px", textTransform: "uppercase", marginBottom: "4px" }}>Teaching</p>
-                        <p style={{ fontSize: "13px", fontWeight: 600 }}>{r.teachingClarity}/5</p>
-                      </div>
-                      <div>
-                        <p style={{ color: "#444", fontSize: "9px", textTransform: "uppercase", marginBottom: "4px" }}>Behaviour</p>
-                        <p style={{ fontSize: "13px", fontWeight: 600 }}>{r.behaviour}/5</p>
-                      </div>
-                   </div>
-                   <RatingReportButton ratingId={r.id} />
+                {/* The comment */}
+                <p className="dmsans" style={{
+                  fontSize: "14px", lineHeight: "1.65", color: "#ccc",
+                  borderLeft: `2px solid ${rc.bar}`,
+                  paddingLeft: "12px",
+                }}>
+                  {r.review}
+                </p>
+
+                {/* Footer */}
+                <div style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #111",
+                }}>
+                  <span className="dmsans" style={{ fontSize: "10px", color: "#2a2a2a", letterSpacing: "1px", textTransform: "uppercase" }}>
+                    Anonymous
+                  </span>
+                  <RatingReportButton ratingId={r.id} />
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            );
+          })
+        )}
+      </div>
 
-        {/* Footer */}
-        <footer style={{ marginTop: "120px", borderTop: "1px solid #1a1a1a", padding: "40px 0", textAlign: "center" }}>
-           <p style={{ color: "#333", fontSize: "11px", maxWidth: "400px", margin: "0 auto", lineHeight: "1.8" }}>
-             Content represents subjective student experiences. We maintain a neutral stance and do not verify individual claims.
-           </p>
-        </footer>
-
-      </main>
+      {/* ── LEGAL FOOTER ── */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        background: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
+        borderTop: "1px solid #141414",
+        padding: "10px 20px",
+      }}>
+        <p className="dmsans" style={{ fontSize: "9px", color: "#2a2a2a", textAlign: "center", lineHeight: "1.5" }}>
+          Content represents user opinions. We do not verify claims.{" "}
+          <Link href="/terms" style={{ color: "#3a3a3a", textDecoration: "underline" }}>Terms</Link>
+          {" · "}
+          <Link href="/privacy" style={{ color: "#3a3a3a", textDecoration: "underline" }}>Privacy</Link>
+        </p>
+      </div>
     </div>
   );
 }
