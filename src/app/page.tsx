@@ -269,9 +269,7 @@ export default function HomePage() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link href="/leaderboard" className="dmsans" style={{ fontSize: "12px", color: "#666", textDecoration: "none", letterSpacing: "1px", textTransform: "uppercase" }}>
-            Leaderboard
-          </Link>
+          
           <button
             onClick={() => session ? signOut() : signIn("google")}
             className="btn-ghost"
