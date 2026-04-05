@@ -253,34 +253,41 @@ export default function HomePage() {
         backgroundSize: "60px 60px"
       }} />
 
-      {/* NAV */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        backgroundColor: "rgba(8,8,8,0.95)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #1a1a1a",
-        padding: "0 32px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        height: "60px",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span className="playfair" style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.3px", color: "#f0ede8" }}>
-            Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link href="/leaderboard" className="dmsans" style={{ fontSize: "12px", color: "#666", textDecoration: "none", letterSpacing: "1px", textTransform: "uppercase" }}>
-            Leaderboard
-          </Link>
-          <button
-            onClick={() => session ? signOut() : signIn("google")}
-            className="btn-ghost"
-            style={{ padding: "6px 14px", fontSize: "11px" }}
-          >
-            {session ? "Sign Out" : "Sign In"}
-          </button>
-        </div>
-      </nav>
+{/* NAV */}
+<nav style={{
+  position: "sticky", top: 0, zIndex: 100,
+  backgroundColor: "rgba(8,8,8,0.95)",
+  backdropFilter: "blur(12px)",
+  borderBottom: "1px solid #1a1a1a",
+  padding: "0 32px",
+  display: "flex", alignItems: "center", justifyContent: "space-between",
+  height: "60px",
+}}>
+  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+    <Link href="/" style={{ textDecoration: "none" }}>
+      <span className="playfair" style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.3px", color: "#f0ede8" }}>
+        Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
+      </span>
+    </Link>
+  </div>
+
+  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+    
+    {/* --- PROFILE LINK ADDED HERE --- */}
+    <Link href="/profile" className="dmsans" style={{ fontSize: "12px", color: "#666", textDecoration: "none", letterSpacing: "1px", textTransform: "uppercase" }}>
+      Profile
+    </Link>
+    {/* ------------------------------ */}
+
+    <button
+      onClick={() => session ? signOut() : signIn("google")}
+      className="btn-ghost"
+      style={{ padding: "6px 14px", fontSize: "11px" }}
+    >
+      {session ? "Sign Out" : "Sign In"}
+    </button>
+  </div>
+</nav>
 
       <main style={{ position: "relative", zIndex: 1 }}>
 
