@@ -17,32 +17,23 @@ export default function RoomsPage() {
   const [created, setCreated] = useState<{ roomCode: string; password: string; name: string } | null>(null)
 
   async function handleShare() {
-    if (!created) return;
-    const shareData = {
-      title: 'Gossip Room Invitation',
-      text: `Join the private room: ${created.name}\nRoom Code: ${created.roomCode}\nPassword: ${created.password}`,
-      url: window.location.href
-    };
-
+    if (!created) return
+    const text = `Join my private room: ${created.name}\nCode: ${created.roomCode}\nPassword: ${created.password}`
     try {
       if (navigator.share) {
-        await navigator.share(shareData);
+        await navigator.share({ title: "Gossip Room Invite", text, url: window.location.href })
       } else {
-        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
-        alert("Credentials copied to clipboard!");
+        await navigator.clipboard.writeText(text)
+        alert("Credentials copied!")
       }
-    } catch (err) {
-      console.error("Error sharing:", err);
-    }
+    } catch { /* user cancelled */ }
   }
 
   async function handleJoin() {
     if (roomCode.length < 4 || password.length < 4) {
-      setError("Please enter the full 4-digit credentials")
-      return
+      setError("Enter full 4-digit credentials"); return
     }
-    setLoading(true)
-    setError("")
+    setLoading(true); setError("")
     const res = await fetch("/api/rooms/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -53,18 +44,14 @@ export default function RoomsPage() {
       sessionStorage.setItem(`room_${roomCode}`, password)
       router.push(`/rooms/${roomCode}`)
     } else {
-      setError(data.error || "Invalid Credentials")
+      setError(data.error || "Invalid credentials")
       setLoading(false)
     }
   }
 
   async function handleCreate() {
-    if (!roomName.trim()) {
-      setError("Enter a room name")
-      return
-    }
-    setLoading(true)
-    setError("")
+    if (!roomName.trim()) { setError("Enter a room name"); return }
+    setLoading(true); setError("")
     try {
       const res = await fetch("/api/rooms", {
         method: "POST",
@@ -78,18 +65,34 @@ export default function RoomsPage() {
       } else {
         setError(data.error || "Failed to create room")
       }
-    } catch (e) {
+    } catch {
       setError("Server error")
     }
     setLoading(false)
   }
 
-  if (!session && status !== "loading") {
+  if (status === "loading") return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
+
+  if (!session) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", color: "#fff", fontFamily: "Inter, sans-serif" }}>
+      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
+        <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900&family=DM+Sans:wght@400;600&display=swap');` }} />
         <div style={{ textAlign: "center", maxWidth: "300px" }}>
-          <h1 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "32px" }}>Gossip Rooms</h1>
-          <button onClick={() => signIn("google")} style={{ width: "100%", backgroundColor: "#fff", color: "#000", padding: "16px", borderRadius: "12px", fontWeight: 700, border: "none", cursor: "pointer" }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700, color: "#f0ede8", marginBottom: "8px" }}>
+            Gossip <span style={{ color: "#c8a96e", fontStyle: "italic" }}>Rooms</span>
+          </p>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#555", marginBottom: "32px" }}>
+            Private anonymous chat rooms for students.
+          </p>
+          <button
+            onClick={() => signIn("google")}
+            style={{
+              width: "100%", background: "#c8a96e", color: "#080808",
+              border: "none", padding: "14px", borderRadius: "2px",
+              fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
+              fontSize: "13px", letterSpacing: "0.5px", cursor: "pointer", textTransform: "uppercase",
+            }}
+          >
             Sign in to Enter
           </button>
         </div>
@@ -98,90 +101,201 @@ export default function RoomsPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#000", color: "#fff", fontFamily: "Inter, sans-serif", display: "flex", flexDirection: "column" }}>
-      <nav style={{ padding: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/" style={{ color: "#3f3f46", textDecoration: "none", fontSize: "14px", fontWeight: 600 }}>← EXIT</Link>
-        <div style={{ height: "4px", width: "40px", backgroundColor: "#1f1f22", borderRadius: "2px" }} />
-        <div style={{ width: "40px" }} />
+    <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        * { box-sizing: border-box; }
+        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
+        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
+        .tag { font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; }
+
+        .code-input {
+          width: 100%; background: none; border: none;
+          border-bottom: 1px solid #1e1e1e; color: #f0ede8;
+          font-family: 'Playfair Display', serif;
+          font-size: 48px; font-weight: 700; text-align: center;
+          letter-spacing: 16px; outline: none;
+          padding-bottom: 8px; transition: border-color 0.2s;
+        }
+        .code-input:focus { border-bottom-color: #c8a96e; }
+
+        .name-input {
+          width: 100%; background: none; border: none;
+          border-bottom: 1px solid #1e1e1e; color: #f0ede8;
+          font-family: 'Playfair Display', serif;
+          font-size: 22px; font-weight: 700; text-align: center;
+          outline: none; padding-bottom: 8px; transition: border-color 0.2s;
+        }
+        .name-input:focus { border-bottom-color: #c8a96e; }
+        .name-input::placeholder { color: #2a2a2a; }
+
+        .btn-gold {
+          width: 100%; background: #c8a96e; color: #080808; border: none;
+          padding: 15px; font-family: 'DM Sans', sans-serif;
+          font-weight: 700; font-size: 13px; letter-spacing: 0.5px;
+          text-transform: uppercase; cursor: pointer; border-radius: 2px;
+          transition: background 0.2s, opacity 0.2s;
+        }
+        .btn-gold:hover { background: #d4b87a; }
+        .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .tab-btn {
+          background: none; border: none; color: #444;
+          font-family: 'DM Sans', sans-serif; font-size: 12px;
+          font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+          cursor: pointer; padding: 10px 0;
+          border-bottom: 2px solid transparent; transition: all 0.15s;
+        }
+        .tab-btn.active { color: #f0ede8; border-bottom-color: #c8a96e; }
+
+        @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        .fade-up { animation: fadeUp 0.4s ease forwards; }
+      `}} />
+
+      {/* NAV */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
+        borderBottom: "1px solid #141414",
+        padding: "0 20px", height: "52px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <Link href="/" className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>← Home</Link>
+        <span className="playfair" style={{ fontSize: "16px", fontWeight: 700 }}>
+          Gossip <span style={{ color: "#c8a96e", fontStyle: "italic" }}>Rooms</span>
+        </span>
+        <div style={{ width: "48px" }} />
       </nav>
 
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px" }}>
-        
+      <main style={{ maxWidth: "400px", margin: "0 auto", padding: "48px 24px 80px" }}>
+
+        {/* ── CREATED STATE ── */}
         {created ? (
-          <div style={{ backgroundColor: "#111113", border: "1px solid #10b981", borderRadius: "24px", padding: "32px 24px", width: "100%", maxWidth: "340px", textAlign: "center", animation: "fadeIn 0.5s ease" }}>
-            <div style={{ width: "48px", height: "48px", backgroundColor: "rgba(16, 185, 129, 0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#10b981" }}>✓</div>
-            <h3 style={{ color: "#71717a", fontSize: "11px", fontWeight: 800, letterSpacing: "1px", marginBottom: "4px" }}>ROOM INITIALIZED</h3>
-            <p style={{ fontSize: "20px", fontWeight: 700, marginBottom: "32px" }}>{created.name}</p>
-            
-            <div style={{ display: "flex", gap: "12px", marginBottom: "32px" }}>
-                <div style={{ flex: 1, background: "#000", padding: "16px 12px", borderRadius: "16px", border: "1px solid #1f1f22" }}>
-                    <p style={{ fontSize: "9px", color: "#3f3f46", fontWeight: 800, marginBottom: "8px" }}>CODE</p>
-                    <p style={{ fontSize: "22px", fontWeight: 900, letterSpacing: "2px" }}>{created.roomCode}</p>
+          <div className="fade-up" style={{
+            background: "#0d0d0d", border: "1px solid #4ade80",
+            borderRadius: "4px", padding: "32px 24px", textAlign: "center",
+          }}>
+            <div style={{
+              width: "40px", height: "40px", borderRadius: "50%",
+              background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px", color: "#4ade80", fontSize: "16px",
+            }}>✓</div>
+
+            <span className="tag" style={{ display: "block", marginBottom: "8px" }}>Room Initialized</span>
+            <p className="playfair" style={{ fontSize: "22px", fontWeight: 700, margin: "0 0 28px" }}>
+              {created.name}
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "28px" }}>
+              {[
+                { label: "Room Code", val: created.roomCode },
+                { label: "Password", val: created.password },
+              ].map(item => (
+                <div key={item.label} style={{ background: "#080808", border: "1px solid #1e1e1e", padding: "16px", borderRadius: "2px" }}>
+                  <p className="tag" style={{ marginBottom: "8px" }}>{item.label}</p>
+                  <p className="playfair" style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "4px", margin: 0 }}>
+                    {item.val}
+                  </p>
                 </div>
-                <div style={{ flex: 1, background: "#000", padding: "16px 12px", borderRadius: "16px", border: "1px solid #1f1f22" }}>
-                    <p style={{ fontSize: "9px", color: "#3f3f46", fontWeight: 800, marginBottom: "8px" }}>PASS</p>
-                    <p style={{ fontSize: "22px", fontWeight: 900, letterSpacing: "2px" }}>{created.password}</p>
-                </div>
+              ))}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <button onClick={() => router.push(`/rooms/${created.roomCode}`)} style={{ width: "100%", backgroundColor: "#fff", color: "#000", padding: "16px", borderRadius: "14px", fontWeight: 800, border: "none", cursor: "pointer" }}>ENTER ROOM</button>
-                <button onClick={handleShare} style={{ width: "100%", backgroundColor: "transparent", color: "#71717a", padding: "12px", borderRadius: "14px", fontWeight: 600, border: "1px solid #1f1f22", fontSize: "13px", cursor: "pointer" }}>SHARE ACCESS</button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button className="btn-gold" onClick={() => router.push(`/rooms/${created.roomCode}`)}>
+                Enter Room
+              </button>
+              <button
+                onClick={handleShare}
+                className="dmsans"
+                style={{
+                  background: "none", border: "1px solid #1e1e1e", color: "#666",
+                  padding: "12px", borderRadius: "2px", cursor: "pointer",
+                  fontSize: "12px", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase",
+                }}
+              >
+                Share Access
+              </button>
             </div>
           </div>
+
         ) : (
+          /* ── JOIN / CREATE ── */
           <>
-            <div style={{ display: "flex", gap: "24px", marginBottom: "60px", marginTop: "20px" }}>
-              <button onClick={() => { setTab("join"); setError(""); }} style={{ background: "none", border: "none", fontSize: "14px", fontWeight: 800, cursor: "pointer", color: tab === "join" ? "#fff" : "#27272a", transition: "0.2s" }}>
-                JOIN ROOM
-                {tab === "join" && <div style={{ height: "2px", backgroundColor: "#ef4444", marginTop: "4px" }} />}
+            {/* Tab switcher */}
+            <div style={{ display: "flex", gap: "28px", borderBottom: "1px solid #141414", marginBottom: "40px" }}>
+              <button className={`tab-btn${tab === "join" ? " active" : ""}`} onClick={() => { setTab("join"); setError("") }}>
+                Join Room
               </button>
-              <button onClick={() => { setTab("create"); setError(""); }} style={{ background: "none", border: "none", fontSize: "14px", fontWeight: 800, cursor: "pointer", color: tab === "create" ? "#fff" : "#27272a", transition: "0.2s" }}>
-                CREATE NEW
-                {tab === "create" && <div style={{ height: "2px", backgroundColor: "#ef4444", marginTop: "4px" }} />}
+              <button className={`tab-btn${tab === "create" ? " active" : ""}`} onClick={() => { setTab("create"); setError("") }}>
+                Create New
               </button>
             </div>
 
-            <div style={{ width: "100%", maxWidth: "340px", textAlign: "center" }}>
-              {tab === "join" ? (
-                <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  <h2 style={{ fontSize: "12px", color: "#71717a", letterSpacing: "2px", marginBottom: "40px" }}>ENTER AUTHENTICATION</h2>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+            {tab === "join" ? (
+              <div className="fade-up">
+                <span className="tag" style={{ display: "block", textAlign: "center", marginBottom: "36px" }}>
+                  Enter Credentials
+                </span>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "32px", marginBottom: "40px" }}>
+                  <div>
+                    <span className="tag" style={{ display: "block", marginBottom: "12px", textAlign: "center" }}>Room Code</span>
                     <input
+                      className="code-input"
                       value={roomCode}
-                      onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      onChange={e => setRoomCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
                       placeholder="0000"
-                      style={{ width: "100%", background: "none", border: "none", borderBottom: "1px solid #1f1f22", color: "#fff", fontSize: "42px", fontWeight: 900, textAlign: "center", letterSpacing: "12px", outline: "none" }}
-                    />
-                    <input
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                      placeholder="••••"
-                      type="password"
-                      style={{ width: "100%", background: "none", border: "none", borderBottom: "1px solid #1f1f22", color: "#fff", fontSize: "42px", fontWeight: 900, textAlign: "center", letterSpacing: "12px", outline: "none" }}
                     />
                   </div>
-                  {error && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: "32px", fontWeight: 600 }}>{error}</p>}
-                  <button onClick={handleJoin} disabled={loading} style={{ marginTop: "60px", width: "100%", backgroundColor: roomCode.length === 4 && password.length === 4 ? "#fff" : "#111", color: "#000", padding: "18px", borderRadius: "14px", fontWeight: 800, border: "none", cursor: "pointer", transition: "0.3s" }}>
-                    {loading ? "VERIFYING..." : "ACCESS ROOM"}
-                  </button>
+                  <div>
+                    <span className="tag" style={{ display: "block", marginBottom: "12px", textAlign: "center" }}>Password</span>
+                    <input
+                      className="code-input"
+                      value={password}
+                      onChange={e => setPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="••••"
+                      type="password"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  <h2 style={{ fontSize: "12px", color: "#71717a", letterSpacing: "2px", marginBottom: "40px" }}>INITIALIZE PRIVATE SPACE</h2>
-                  <input
-                    value={roomName}
-                    onChange={(e) => setRoomName(e.target.value)}
-                    placeholder="Room Identity"
-                    style={{ width: "100%", background: "none", border: "none", borderBottom: "1px solid #1f1f22", color: "#fff", fontSize: "20px", fontWeight: 700, textAlign: "center", outline: "none" }}
-                  />
-                  {error && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: "32px" }}>{error}</p>}
-                  <button onClick={handleCreate} disabled={loading || !roomName} style={{ marginTop: "60px", width: "100%", backgroundColor: roomName ? "#ef4444" : "#111", color: "#fff", padding: "18px", borderRadius: "14px", fontWeight: 800, border: "none", cursor: "pointer", transition: "0.3s" }}>
-                    {loading ? "GENERATING..." : "CREATE ROOM"}
-                  </button>
-                </div>
-              )}
-            </div>
+
+                {error && <p className="dmsans" style={{ color: "#f87171", fontSize: "13px", textAlign: "center", marginBottom: "16px" }}>{error}</p>}
+
+                <button
+                  className="btn-gold"
+                  onClick={handleJoin}
+                  disabled={loading || roomCode.length < 4 || password.length < 4}
+                >
+                  {loading ? "Verifying..." : "Access Room"}
+                </button>
+              </div>
+
+            ) : (
+              <div className="fade-up">
+                <span className="tag" style={{ display: "block", textAlign: "center", marginBottom: "36px" }}>
+                  Name Your Room
+                </span>
+
+                <input
+                  className="name-input"
+                  value={roomName}
+                  onChange={e => setRoomName(e.target.value)}
+                  placeholder="Room name..."
+                  style={{ marginBottom: "40px" }}
+                />
+
+                {error && <p className="dmsans" style={{ color: "#f87171", fontSize: "13px", textAlign: "center", marginBottom: "16px" }}>{error}</p>}
+
+                <button
+                  className="btn-gold"
+                  onClick={handleCreate}
+                  disabled={loading || !roomName.trim()}
+                >
+                  {loading ? "Creating..." : "Create Room"}
+                </button>
+              </div>
+            )}
           </>
         )}
       </main>

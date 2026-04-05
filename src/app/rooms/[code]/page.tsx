@@ -23,10 +23,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
   useEffect(() => {
     const stored = sessionStorage.getItem(`room_${code}`)
-    if (stored) {
-      setPassword(stored)
-      setAuthed(true)
-    }
+    if (stored) { setPassword(stored); setAuthed(true) }
   }, [code])
 
   useEffect(() => {
@@ -44,13 +41,8 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     try {
       const res = await fetch(`/api/rooms/${code}/messages?password=${password}`)
       const data = await res.json()
-      if (data.messages) {
-        setMessages(data.messages)
-        setRoom(data.room)
-      }
-    } catch (e) {
-      console.error("Connection lost")
-    }
+      if (data.messages) { setMessages(data.messages); setRoom(data.room) }
+    } catch { /* silent */ }
   }
 
   async function handleSend() {
@@ -63,111 +55,194 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     })
     const data = await res.json()
     if (data.message) {
-      setContent("")
-      setMyHash(data.message.userHash)
-      fetchMessages()
+      setContent(""); setMyHash(data.message.userHash); fetchMessages()
     } else {
-      setError(data.error || "Failed to transmit")
+      setError(data.error || "Failed to send")
     }
     setSending(false)
   }
 
   function handlePasswordSubmit() {
     if (password.length === 4) {
-      sessionStorage.setItem(`room_${code}`, password)
-      setAuthed(true)
+      sessionStorage.setItem(`room_${code}`, password); setAuthed(true)
     } else {
-      setError("Credentials must be 4 digits")
+      setError("Must be 4 digits")
     }
   }
 
-  if (status === "loading") return <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a" }} />
+  if (status === "loading") return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
 
+  // Sign in gate
   if (!session) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-        <div style={{ textAlign: "center", maxWidth: "300px", color: "white", fontFamily: "Inter, sans-serif" }}>
-          <p style={{ fontSize: "40px", marginBottom: "16px" }}>🔒</p>
-          <h1 style={{ fontSize: "22px", fontWeight: 800, marginBottom: "12px" }}>Access Restricted</h1>
-          <p style={{ color: "#71717a", fontSize: "14px", marginBottom: "32px" }}>Identity verification required to enter this room.</p>
-          <button onClick={() => signIn("google")} style={{ width: "100%", backgroundColor: "#fff", color: "#000", padding: "16px", borderRadius: "16px", fontWeight: 800, border: "none", cursor: "pointer" }}>Continue</button>
+      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
+        <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700&family=DM+Sans:wght@400;600&display=swap');` }} />
+        <div style={{ textAlign: "center", maxWidth: "300px" }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "24px", fontWeight: 700, color: "#f0ede8", marginBottom: "12px" }}>
+            Access Restricted
+          </p>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#555", marginBottom: "28px" }}>
+            Sign in to enter this room.
+          </p>
+          <button
+            onClick={() => signIn("google")}
+            style={{
+              width: "100%", background: "#c8a96e", color: "#080808", border: "none",
+              padding: "14px", fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
+              fontSize: "13px", cursor: "pointer", borderRadius: "2px", textTransform: "uppercase",
+            }}
+          >
+            Sign In
+          </button>
         </div>
       </div>
     )
   }
 
+  // Password gate
   if (!authed) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", color: "white", fontFamily: "Inter, sans-serif" }}>
+      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700&family=DM+Sans:wght@400;600&display=swap');
+          .code-input {
+            width: 100%; background: none; border: none;
+            border-bottom: 1px solid #1e1e1e; color: #f0ede8;
+            font-family: 'Playfair Display', serif; font-size: 48px;
+            font-weight: 700; text-align: center; letter-spacing: 16px;
+            outline: none; padding-bottom: 8px; transition: border-color 0.2s;
+          }
+          .code-input:focus { border-bottom-color: #c8a96e; }
+        `}} />
         <div style={{ width: "100%", maxWidth: "320px", textAlign: "center" }}>
-          <h2 style={{ fontSize: "12px", color: "#71717a", letterSpacing: "2px", marginBottom: "40px" }}>ENTER ROOM KEY</h2>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "16px", color: "#555", letterSpacing: "2px", marginBottom: "36px", textTransform: "uppercase" }}>
+            Enter Room Key
+          </p>
           <input
+            className="code-input"
             value={password}
-            onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onChange={e => setPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
             placeholder="••••"
             type="password"
-            style={{ width: "100%", background: "none", border: "none", borderBottom: "1px solid #1f1f22", color: "#fff", fontSize: "42px", fontWeight: 900, textAlign: "center", letterSpacing: "12px", outline: "none", marginBottom: "40px" }}
+            style={{ marginBottom: "36px" }}
           />
-          {error && <p style={{ color: "#ef4444", fontSize: "12px", marginBottom: "20px" }}>{error}</p>}
-          <button onClick={handlePasswordSubmit} style={{ width: "100%", backgroundColor: "#ef4444", color: "#fff", padding: "18px", borderRadius: "14px", fontWeight: 800, border: "none", cursor: "pointer" }}>Unlock Room</button>
-          <Link href="/rooms" style={{ display: "block", marginTop: "24px", color: "#3f3f46", textDecoration: "none", fontSize: "13px" }}>← Exit</Link>
+          {error && <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#f87171", fontSize: "12px", marginBottom: "16px" }}>{error}</p>}
+          <button
+            onClick={handlePasswordSubmit}
+            style={{
+              width: "100%", background: "#c8a96e", color: "#080808", border: "none",
+              padding: "14px", fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
+              fontSize: "13px", cursor: "pointer", borderRadius: "2px", textTransform: "uppercase",
+              marginBottom: "16px",
+            }}
+          >
+            Unlock Room
+          </button>
+          <Link href="/rooms" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#444", textDecoration: "none" }}>
+            ← Back to Rooms
+          </Link>
         </div>
       </div>
     )
   }
 
+  // Chat view
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5", fontFamily: "Inter, sans-serif", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <header style={{ padding: "16px 20px", borderBottom: "1px solid #1f1f22", display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(10,10,10,0.8)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Link href="/rooms" style={{ textDecoration: "none", color: "#71717a", fontSize: "20px" }}>←</Link>
-          <div>
-            <p style={{ margin: 0, fontSize: "15px", fontWeight: 800, letterSpacing: "-0.3px" }}>{room?.name || "Private Room"}</p>
-            <p style={{ margin: 0, fontSize: "10px", color: "#ef4444", fontWeight: 700, letterSpacing: "1px" }}>{code} · ENCRYPTED</p>
-          </div>
+    <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8", display: "flex", flexDirection: "column" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700&family=DM+Sans:wght@300;400;500;600&display=swap');
+        * { box-sizing: border-box; }
+        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
+        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
+
+        .msg-input {
+          flex: 1; background: #0d0d0d; border: 1px solid #1e1e1e;
+          border-radius: 2px; color: #f0ede8; padding: 12px 16px;
+          font-size: 14px; font-family: 'DM Sans', sans-serif;
+          outline: none; transition: border-color 0.2s;
+        }
+        .msg-input:focus { border-color: #c8a96e; }
+        .msg-input::placeholder { color: #333; }
+
+        .send-btn {
+          width: 44px; height: 44px; border: none; border-radius: 2px;
+          background: #c8a96e; color: #080808; cursor: pointer;
+          font-size: 16px; font-weight: 700; transition: background 0.2s;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .send-btn:hover { background: #d4b87a; }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      `}} />
+
+      {/* NAV */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 10,
+        backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
+        borderBottom: "1px solid #141414",
+        padding: "0 20px", height: "52px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <Link href="/rooms" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#555", textDecoration: "none" }}>
+          ← Rooms
+        </Link>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "15px", fontWeight: 700, margin: 0 }}>
+            {room?.name || "Private Room"}
+          </p>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#c8a96e", letterSpacing: "2px", textTransform: "uppercase", margin: 0 }}>
+            {code} · Encrypted
+          </p>
         </div>
         <button
           onClick={() => {
-            navigator.clipboard.writeText(`Room: ${room?.name}\nCode: ${code}\nPass: ${password}`);
-            alert("Invite copied to clipboard!");
+            navigator.clipboard.writeText(`Room: ${room?.name}\nCode: ${code}\nPass: ${password}`)
+            alert("Copied!")
           }}
-          style={{ backgroundColor: "transparent", border: "1px solid #1f1f22", color: "#71717a", padding: "6px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}
+          style={{
+            background: "none", border: "1px solid #1e1e1e", color: "#555",
+            padding: "5px 10px", borderRadius: "2px",
+            fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
+            fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", cursor: "pointer",
+          }}
         >
-          INVITE
+          Invite
         </button>
       </header>
 
-      {/* Message Feed */}
-      <div style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: "16px", overflowY: "auto" }}>
+      {/* Messages */}
+      <div style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto" }}>
         {messages.length === 0 ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.3 }}>
-            <p style={{ fontSize: "14px", fontStyle: "italic" }}>Room initialized. Start the gossip 👀</p>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "16px", color: "#2a2a2a", fontStyle: "italic" }}>
+              Room open. Start the gossip.
+            </p>
           </div>
         ) : (
-          messages.map((m) => {
-            const isMe = m.userHash === myHash;
+          messages.map(m => {
+            const isMe = m.userHash === myHash
             return (
-              <div key={m.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "85%" }}>
-                <div style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginBottom: "4px" }}>
-                   <span style={{ fontSize: "10px", fontWeight: 800, color: "#3f3f46", textTransform: "uppercase" }}>
-                    {isMe ? "YOU" : `ANON_${m.userHash.slice(0, 4)}`}
-                   </span>
+              <div key={m.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+                <div style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginBottom: "3px" }}>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#2a2a2a", letterSpacing: "1px", textTransform: "uppercase" }}>
+                    {isMe ? "You" : `Anon ${m.userHash.slice(0, 4)}`}
+                  </span>
                 </div>
                 <div style={{
-                  padding: "12px 16px",
-                  borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                  backgroundColor: isMe ? "#ef4444" : "#111113",
-                  color: isMe ? "#fff" : "#d4d4d8",
-                  fontSize: "14px",
-                  lineHeight: "1.5",
-                  boxShadow: isMe ? "0 4px 12px rgba(239, 68, 68, 0.2)" : "none",
-                  border: isMe ? "none" : "1px solid #1f1f22"
+                  padding: "10px 14px",
+                  borderRadius: isMe ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                  background: isMe ? "#c8a96e" : "#0d0d0d",
+                  border: isMe ? "none" : "1px solid #141414",
+                  color: isMe ? "#080808" : "#ccc",
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: "14px", lineHeight: "1.5",
                 }}>
                   {m.content}
                 </div>
-                <div style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginTop: "4px" }}>
-                   <span style={{ fontSize: "9px", color: "#3f3f46" }}>{timeStr(m.createdAt)}</span>
+                <div style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginTop: "3px" }}>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#2a2a2a" }}>
+                    {timeStr(m.createdAt)}
+                  </span>
                 </div>
               </div>
             )
@@ -176,36 +251,26 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         <div ref={bottomRef} />
       </div>
 
-      {/* Input Area */}
-      <div style={{ padding: "12px 20px 14px", borderTop: "1px solid #1f1f22", backgroundColor: "#0a0a0a" }}>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+      {/* Input */}
+      <div style={{ padding: "12px 20px 16px", borderTop: "1px solid #141414", backgroundColor: "#080808" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <input
+            className="msg-input"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Type your message..."
-            style={{
-              flex: 1, backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "14px",
-              padding: "14px 18px", color: "#fff", fontSize: "14px", outline: "none", transition: "border-color 0.2s"
-            }}
+            onChange={e => setContent(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+            placeholder="Type a message..."
           />
           <button
+            className="send-btn"
             onClick={handleSend}
             disabled={sending || !content.trim()}
-            style={{
-              backgroundColor: content.trim() ? "#fff" : "#111113",
-              color: content.trim() ? "#000" : "#3f3f46",
-              width: "50px", height: "50px", borderRadius: "14px", border: "none",
-              fontWeight: 800, cursor: "pointer", transition: "all 0.2s",
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px"
-            }}
           >
-            {sending ? "..." : "↑"}
+            ↑
           </button>
         </div>
-        {/* Posting Area Disclaimer — Legal Shield Layer 1 */}
-        <p style={{ marginTop: "8px", fontSize: "9px", color: "#27272a", textAlign: "center", lineHeight: "1.4" }}>
-          All content represents user opinions and experiences. We do not verify claims. Report inappropriate content for review.
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#1e1e1e", textAlign: "center", marginTop: "8px" }}>
+          Anonymous · We do not verify claims · Report inappropriate content
         </p>
       </div>
     </div>

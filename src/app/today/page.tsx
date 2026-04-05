@@ -21,10 +21,10 @@ function timeAgo(date: string) {
 }
 
 function scoreColor(score: number) {
-  if (score >= 4.5) return "#00ff88"
-  if (score >= 3.5) return "#FFD700"
-  if (score >= 2.5) return "#FF8C00"
-  return "#ff4444"
+  if (score >= 4.5) return "#4ade80"
+  if (score >= 3.5) return "#facc15"
+  if (score >= 2.5) return "#fb923c"
+  return "#f87171"
 }
 
 export default function TodayPage() {
@@ -33,121 +33,155 @@ export default function TodayPage() {
 
   useEffect(() => {
     fetch("/api/recent-ratings")
-      .then((r) => r.json())
-      .then((data) => {
+      .then(r => r.json())
+      .then(data => {
         setRatings(data.ratings || [])
         setLoading(false)
       })
   }, [])
 
   return (
-    <div style={{ 
-      minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5", 
-      fontFamily: "Inter, sans-serif", paddingBottom: "100px" 
-    }}>
-      {/* Header */}
-      <header style={{
-        padding: "24px 20px", borderBottom: "1px solid #1f1f22",
-        backdropFilter: "blur(12px)", backgroundColor: "rgba(10, 10, 10, 0.8)",
-        position: "sticky", top: 0, zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center"
-      }}>
-        <div>
-          <h1 style={{ fontSize: "20px", fontWeight: 800, letterSpacing: "-0.5px", margin: 0 }}>Today's Voices</h1>
-          <p style={{ fontSize: "11px", color: "#71717a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px" }}>
-            Live Student Feed
-          </p>
-        </div>
-        <Link href="/" style={{ fontSize: "13px", fontWeight: 600, color: "#ef4444", textDecoration: "none" }}>HOME</Link>
-      </header>
+    <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        * { box-sizing: border-box; }
+        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
+        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
+        .tag { font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; font-weight: 500; }
 
-      <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
+        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .fade-up { animation: fadeUp 0.4s ease forwards; }
+
+        .review-card {
+          background: #0d0d0d;
+          border: 1px solid #141414;
+          border-radius: 4px;
+          padding: 20px;
+          transition: border-color 0.2s;
+        }
+        .review-card:hover { border-color: #1e1e1e; }
+
+        .score-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+          padding: 14px 0;
+          border-top: 1px solid #111;
+          border-bottom: 1px solid #111;
+          margin: 14px 0;
+        }
+      `}} />
+
+      {/* NAV */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
+        borderBottom: "1px solid #141414",
+        padding: "0 20px", height: "52px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <Link href="/" className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>← Home</Link>
+        <span className="playfair" style={{ fontSize: "16px", fontWeight: 700 }}>
+          Today's <span style={{ color: "#c8a96e", fontStyle: "italic" }}>Voices</span>
+        </span>
+        <span className="tag" style={{ fontSize: "9px" }}>live feed</span>
+      </nav>
+
+      <main style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 80px" }}>
+
         {loading ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "#3f3f46" }}>Syncing latest reviews...</div>
+          <div className="dmsans" style={{ padding: "60px 0", textAlign: "center", color: "#333", fontSize: "13px" }}>
+            Syncing latest reviews...
+          </div>
         ) : ratings.length === 0 ? (
-          <div style={{ textAlign: "center", marginTop: "60px", animation: "fadeIn 0.5s ease" }}>
-            <p style={{ fontSize: "48px", marginBottom: "16px" }}>🌙</p>
-            <h2 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px" }}>The campus is quiet.</h2>
-            <p style={{ color: "#71717a", fontSize: "14px", marginBottom: "24px" }}>No reviews have been posted today yet.</p>
-            <Link href="/" style={{ backgroundColor: "#fff", color: "#000", padding: "12px 24px", borderRadius: "12px", textDecoration: "none", fontWeight: 700, fontSize: "14px" }}>
-              Be the first to review
+          <div style={{ padding: "60px 20px", textAlign: "center", border: "1px solid #141414" }}>
+            <p className="playfair" style={{ fontSize: "22px", fontStyle: "italic", color: "#2a2a2a", margin: "0 0 12px" }}>
+              The campus is quiet.
+            </p>
+            <p className="dmsans" style={{ fontSize: "13px", color: "#444", marginBottom: "24px" }}>
+              No reviews posted today yet.
+            </p>
+            <Link href="/" className="dmsans" style={{
+              display: "inline-block", background: "#c8a96e", color: "#080808",
+              padding: "10px 20px", textDecoration: "none",
+              fontSize: "12px", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase",
+            }}>
+              Browse Faculty
             </Link>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ textAlign: "right", paddingRight: "4px" }}>
-               <span style={{ fontSize: "10px", fontWeight: 800, color: "#3f3f46", letterSpacing: "1px" }}>
-                {ratings.length} RECENT UPDATES
-               </span>
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <span className="tag">{ratings.length} recent updates</span>
             </div>
 
-            {ratings.map((r) => {
-              const overall = ((r.teachingClarity + r.approachability + r.gradingFairness + r.punctuality + r.partiality + r.behaviour) / 6).toFixed(1);
-              const scoreNum = parseFloat(overall);
-              
-              return (
-                <div key={r.id} style={{
-                  backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "24px", padding: "24px",
-                  animation: "fadeIn 0.4s ease"
-                }}>
-                  {/* Score & Meta */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                      <span style={{ fontSize: "32px", fontWeight: 900, color: scoreColor(scoreNum) }}>{overall}</span>
-                      <span style={{ fontSize: "12px", color: "#3f3f46", fontWeight: 700 }}>OVERALL</span>
-                    </div>
-                    <span style={{ fontSize: "11px", color: "#3f3f46", fontWeight: 600 }}>{timeAgo(r.createdAt)}</span>
-                  </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {ratings.map((r, idx) => {
+                const overall = (
+                  (r.teachingClarity + r.approachability + r.gradingFairness +
+                   r.punctuality + r.partiality + r.behaviour) / 6
+                )
+                const overallStr = overall.toFixed(1)
+                const col = scoreColor(overall)
 
-                  {/* Review Text */}
-                  {r.review && (
-                    <p style={{ 
-                      fontSize: "15px", lineHeight: "1.6", color: "#d4d4d8", margin: "0 0 20px",
-                      padding: "16px", backgroundColor: "#0a0a0a", borderRadius: "16px", borderLeft: `3px solid ${scoreColor(scoreNum)}`
-                    }}>
-                      "{r.review}"
-                    </p>
-                  )}
+                return (
+                  <div key={r.id} className="review-card fade-up" style={{ animationDelay: `${idx * 0.04}s` }}>
 
-                  {/* Grid of Scores */}
-                  <div style={{ 
-                    display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", 
-                    padding: "20px 0", borderTop: "1px solid #1f1f22", borderBottom: "1px solid #1f1f22",
-                    marginBottom: "16px"
-                  }}>
-                    {Object.entries(CRITERIA_LABELS).map(([key, label]) => (
-                      <div key={key}>
-                        <p style={{ fontSize: "10px", color: "#3f3f46", fontWeight: 700, textTransform: "uppercase", margin: "0 0 4px" }}>{label}</p>
-                        <p style={{ fontSize: "14px", fontWeight: 800, color: "#fff", margin: 0 }}>{r[key]}<span style={{ fontSize: "10px", color: "#3f3f46" }}>/5</span></p>
+                    {/* Top: score + time */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                        <span className="playfair" style={{ fontSize: "28px", fontWeight: 700, color: col }}>
+                          {overallStr}
+                        </span>
+                        <span className="dmsans" style={{ fontSize: "11px", color: "#333" }}>/5 overall</span>
                       </div>
-                    ))}
-                  </div>
+                      <span className="dmsans" style={{ fontSize: "11px", color: "#444", paddingTop: "4px" }}>
+                        {timeAgo(r.createdAt)}
+                      </span>
+                    </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 800, color: "#1f1f22", letterSpacing: "2px" }}>VERIFIED ANONYMOUS</span>
-                    {/* Tiny visual indicator of the faculty being reviewed if available in data */}
-                    {r.faculty?.name && (
-                      <Link href={`/faculty/${r.faculty.id}`} style={{ fontSize: "11px", color: "#ef4444", fontWeight: 700, textDecoration: "none" }}>
-                        VIEW PROFILE →
-                      </Link>
+                    {/* Written review */}
+                    {r.review && (
+                      <p className="dmsans" style={{
+                        fontSize: "14px", lineHeight: "1.7", color: "#ccc",
+                        borderLeft: `2px solid ${col}`, paddingLeft: "12px",
+                        margin: "0 0 4px",
+                      }}>
+                        {r.review}
+                      </p>
                     )}
+
+                    {/* Score grid */}
+                    <div className="score-grid">
+                      {Object.entries(CRITERIA_LABELS).map(([key, label]) => (
+                        <div key={key}>
+                          <p className="tag" style={{ marginBottom: "3px", color: "#444" }}>{label}</p>
+                          <p className="dmsans" style={{ fontSize: "13px", fontWeight: 600, color: "#888", margin: 0 }}>
+                            {r[key]}<span style={{ fontSize: "10px", color: "#333" }}>/5</span>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span className="tag" style={{ color: "#2a2a2a" }}>Verified Anonymous</span>
+                      {r.faculty?.name && (
+                        <Link href={`/faculty/${r.faculty.id}`} className="dmsans" style={{
+                          fontSize: "11px", color: "#c8a96e", textDecoration: "none",
+                          fontWeight: 600, letterSpacing: "0.3px",
+                        }}>
+                          View Profile →
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </>
         )}
       </main>
-
-      {/* Floating Bottom Nav */}
-      <div style={{
-        position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)",
-        backgroundColor: "rgba(24, 24, 27, 0.8)", backdropFilter: "blur(20px)",
-        border: "1px solid #3f3f46", borderRadius: "30px", display: "flex", padding: "8px 12px", gap: "8px", zIndex: 1000
-      }}>
-        <Link href="/" style={{ padding: "8px 16px", borderRadius: "20px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px" }}>Home</Link>
-        <Link href="/today" style={{ padding: "8px 16px", borderRadius: "20px", color: "#fff", backgroundColor: "#ef4444", textDecoration: "none", fontSize: "13px" }}>Today</Link>
-        <Link href="/incidents" style={{ padding: "8px 16px", borderRadius: "20px", color: "#a1a1aa", textDecoration: "none", fontSize: "13px" }}>Feed</Link>
-      </div>
     </div>
   )
 }
