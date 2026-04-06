@@ -309,9 +309,6 @@ export default function HomePage() {
           <Link href="/profile" className="menu-item">
             👤 My Profile
           </Link>
-          <Link href="/leaderboard" className="menu-item">
-            🏆 Leaderboard
-          </Link>
           <Link href="/today" className="menu-item">
             📅 Today's Reviews
           </Link>
