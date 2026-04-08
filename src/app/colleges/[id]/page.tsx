@@ -392,16 +392,34 @@ export default function CollegePage({ params }: { params: Promise<{ id: string }
             </div>
           )}
 
-          {/* BOTTOM LINKS */}
-          <div style={{ padding: "24px 20px 60px" }}>
-            <div style={{ display: "flex", gap: "20px" }}>
-              <Link href={`/incidents`} className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>
-                Campus Feed →
-              </Link>
-              <Link href={`/rooms`} className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>
-                Gossip Rooms →
-              </Link>
-            </div>
+{/* FLOATING BOTTOM NAV */}
+          <div style={{
+            position: "fixed",
+            bottom: "32px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(13, 13, 13, 0.8)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid #1e1e1e",
+            borderRadius: "40px",
+            display: "flex",
+            padding: "8px 12px",
+            gap: "8px",
+            zIndex: 9999,
+            pointerEvents: "auto",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
+            width: "max-content",
+            maxWidth: "90vw"
+          }}>
+            <Link href={`/colleges/${id}/feed`} className="dmsans" style={{ padding: "10px 18px", borderRadius: "30px", fontSize: "12px", color: "#fff", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}>
+              Feed
+            </Link>
+            <Link href={`/colleges/${id}/today`} className="dmsans" style={{ padding: "10px 18px", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}>
+              Today
+            </Link>
+            <Link href={`/rooms`} className="dmsans" style={{ padding: "10px 18px", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}>
+              Rooms
+            </Link>
           </div>
         </>
       )}
