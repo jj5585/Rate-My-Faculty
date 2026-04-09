@@ -160,8 +160,7 @@ export default function PrivacyPage() {
           </p>
           <div style={{ paddingLeft: "20px", borderLeft: "1px solid #333" }}>
             <p style={{ margin: "5px 0" }}><strong>Resident Grievance Officer:</strong> Joel Joby</p>
-            <p style={{ margin: "5px 0" }}><strong>Official Correspondence:</strong> joeljoby999@gmail.com</p>
-            <p style={{ margin: "5px 0" }}><strong>Jurisdiction:</strong> Chennai, Tamil Nadu, India</p>
+            <p style={{ margin: "5px 0" }}><strong>Official Correspondence:</strong> zteeel@gmail.com</p>
           </div>
           <p style={{ fontSize: "11px", marginTop: "20px" }}>
             The Grievance Officer shall acknowledge receipt within 24 hours and provide a definitive resolution within fifteen (15) working days.
