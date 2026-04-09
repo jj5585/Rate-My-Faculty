@@ -112,9 +112,9 @@ export default function TermsPage() {
             Terms of <span style={{ fontStyle: "italic" }}>Use</span>
           </h1>
           <div style={{ width: "40px", height: "1px", background: "#c8a96e", margin: "0 auto 20px" }} />
-          <p className="dmsans" style={{ fontSize: "14px", color: "#444", marginBottom: "6px" }}>Effective Date: July 1, 2026</p>
+          <p className="dmsans" style={{ fontSize: "14px", color: "#444", marginBottom: "6px" }}>Effective Date: 26 May, 2026</p>
           <p className="dmsans" style={{ fontSize: "14px", color: "#333" }}>
-            <a href="https://www.ratemyfaculty.in" style={{ color: "#c8a96e", textDecoration: "none" }}>www.ratemyfaculty.in</a>
+            <a href="https://rate-my-faculty.vercel.app/" style={{ color: "#c8a96e", textDecoration: "none" }}>https://rate-my-faculty.vercel.app/</a>
           </p>
         </header>
 
@@ -504,7 +504,7 @@ export default function TermsPage() {
               </a>
             </p>
             <p style={{ marginBottom: "6px" }}>
-              Website: <a href="https://rate-my-faculty.vercel.app/" style={{ color: "#c8a96e", textDecoration: "none" }}>www.ratemyfaculty.in</a>
+              Website: <a href="rate-my-faculty.vercel.app/" style={{ color: "#c8a96e", textDecoration: "none" }}>rate-my-faculty.vercel.app/</a>
             </p>
           </div>
           <p>For urgent legal matters, including court summons, data subject access requests, and copyright infringement notices, please use the above email with an appropriately descriptive subject line. The Company aims to respond to all formal legal correspondence within fourteen (14) business days.</p>
