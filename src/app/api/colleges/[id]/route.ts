@@ -34,7 +34,6 @@ export async function GET(
     return NextResponse.json({ error: "College not found" }, { status: 404 })
   }
 
-  // Compute avg rating per faculty
   const faculty = college.faculty.map((f) => {
     const count = f._count.ratings
     const avg =
@@ -60,16 +59,25 @@ export async function GET(
     }
   })
 
-  return NextResponse.json({
-    college: {
-      id: college.id,
-      name: college.name,
-      website: college.website,
-      city: college.city,
-      state: college.state,
-      country: college.country,
-      emailDomain: college.emailDomain,
+  // FIX #3b: Cache college detail pages at the Edge.
+  // The faculty list for a college changes infrequently.
+  // 60s s-maxage means at most 1 DB call per minute per college, not 1 per visitor.
+  return NextResponse.json(
+    { college: {
+        id: college.id,
+        name: college.name,
+        website: college.website,
+        city: college.city,
+        state: college.state,
+        country: college.country,
+        emailDomain: college.emailDomain,
+      },
+      faculty,
     },
-    faculty,
-  })
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    }
+  )
 }

@@ -4,7 +4,11 @@ import Link from "next/link";
 import ShareButton from "@/components/ShareButton";
 import RatingReportButton from "@/components/RatingReportButton";
 
-export const revalidate = 0;
+// FIX #1: was `revalidate = 0` — every request hit the DB directly.
+// Now: serve cached HTML for 60s, regenerate in background.
+// On-demand revalidation in /api/ratings/route.ts (revalidatePath) still works —
+// new ratings appear immediately after submission without waiting for the 60s window.
+export const revalidate = 60;
 
 export default async function FacultyProfile({
   params,
@@ -47,7 +51,6 @@ export default async function FacultyProfile({
 
   const writtenReviews = faculty.ratings.filter((r) => r.review && r.review.trim().length > 0);
 
-  // Color scale: red → orange → yellow → green
   function scoreColor(val: number) {
     if (val === 0) return { text: "#2a2a2a", bar: "#1a1a1a" };
     if (val >= 4.5) return { text: "#4ade80", bar: "#4ade80" };
@@ -73,7 +76,6 @@ export default async function FacultyProfile({
         .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
         .dmsans   { font-family: 'DM Sans', sans-serif !important; }
 
-        /* Bar fill animation */
         @keyframes fillBar {
           from { width: 0%; }
           to   { width: var(--target-width); }
@@ -90,7 +92,6 @@ export default async function FacultyProfile({
         }
         .fade-up { animation: fadeUp 0.5s ease forwards; }
 
-        /* Sticky nav */
         .top-nav {
           position: sticky; top: 0; z-index: 100;
           background: rgba(8,8,8,0.96);
@@ -102,7 +103,6 @@ export default async function FacultyProfile({
           padding: 0 20px;
         }
 
-        /* Metric row */
         .metric-row {
           display: flex;
           align-items: center;
@@ -120,7 +120,6 @@ export default async function FacultyProfile({
           overflow: hidden;
         }
 
-        /* Review card */
         .review-card {
           background: #0d0d0d;
           border: 1px solid #141414;
@@ -129,7 +128,6 @@ export default async function FacultyProfile({
           margin-bottom: 10px;
         }
 
-        /* Rate button */
         .rate-btn {
           display: block;
           text-align: center;
@@ -146,7 +144,6 @@ export default async function FacultyProfile({
         }
         .rate-btn:active { background: #d4d1cc; }
 
-        /* Score badge */
         .score-badge {
           display: inline-flex;
           align-items: baseline;
@@ -154,7 +151,6 @@ export default async function FacultyProfile({
         }
       `}} />
 
-      {/* ── TOP NAV ── */}
       <nav className="top-nav">
         <Link
           href={faculty.collegeId ? `/colleges/${faculty.collegeId}` : "/"}
@@ -169,12 +165,10 @@ export default async function FacultyProfile({
         <div style={{ width: "60px" }} />
       </nav>
 
-      {/* ── HERO — NAME + OVERALL SCORE ── */}
       <div className="fade-up" style={{
         padding: "28px 20px 24px",
         borderBottom: "1px solid #141414",
       }}>
-        {/* Initial avatar */}
         <div style={{
           width: "52px", height: "52px", borderRadius: "10px",
           background: "rgba(200,169,110,0.1)", border: "1px solid rgba(200,169,110,0.2)",
@@ -198,7 +192,6 @@ export default async function FacultyProfile({
           {[faculty.designation, faculty.department].filter(Boolean).join(" · ")}
         </p>
 
-        {/* Overall score — BIG */}
         {overallAvg !== null ? (
           <div style={{ display: "flex", alignItems: "flex-end", gap: "12px" }}>
             <span className="playfair" style={{
@@ -221,7 +214,6 @@ export default async function FacultyProfile({
         )}
       </div>
 
-      {/* ── 6 METRICS — ALL VISIBLE AT ONCE ── */}
       <div style={{ padding: "20px 20px 0" }}>
         <p className="dmsans" style={{
           fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
@@ -236,7 +228,6 @@ export default async function FacultyProfile({
             const col = scoreColor(val);
             return (
               <div key={m.key} className="metric-row">
-                {/* Label */}
                 <span className="dmsans" style={{
                   fontSize: "13px", color: "#888", fontWeight: 500,
                   width: "90px", flexShrink: 0,
@@ -244,7 +235,6 @@ export default async function FacultyProfile({
                   {m.label}
                 </span>
 
-                {/* Bar */}
                 <div className="bar-track">
                   <div
                     className="bar-fill"
@@ -258,7 +248,6 @@ export default async function FacultyProfile({
                   />
                 </div>
 
-                {/* Score */}
                 <span className="dmsans" style={{
                   fontSize: "15px", fontWeight: 700,
                   color: col.text, width: "32px",
@@ -272,7 +261,6 @@ export default async function FacultyProfile({
         </div>
       </div>
 
-      {/* ── RATE BUTTON ── */}
       <div style={{ padding: "20px" }}>
         <div style={{ display: "flex", gap: "10px" }}>
           <Link href={`/rate/${faculty.id}`} className="rate-btn" style={{ flex: 1 }}>
@@ -282,7 +270,6 @@ export default async function FacultyProfile({
         </div>
       </div>
 
-      {/* ── WRITTEN REVIEWS ONLY ── */}
       <div style={{ padding: "0 20px 100px" }}>
         <p className="dmsans" style={{
           fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
@@ -312,7 +299,6 @@ export default async function FacultyProfile({
             const rc = scoreColor(reviewOverall);
             return (
               <div key={r.id} className="review-card">
-                {/* Top row: score + date */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                   <div className="score-badge">
                     <span className="playfair" style={{ fontSize: "22px", fontWeight: 700, color: rc.text }}>
@@ -327,7 +313,6 @@ export default async function FacultyProfile({
                   </span>
                 </div>
 
-                {/* The comment */}
                 <p className="dmsans" style={{
                   fontSize: "14px", lineHeight: "1.65", color: "#ccc",
                   borderLeft: `2px solid ${rc.bar}`,
@@ -336,7 +321,6 @@ export default async function FacultyProfile({
                   {r.review}
                 </p>
 
-                {/* Footer */}
                 <div style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #111",
@@ -352,7 +336,6 @@ export default async function FacultyProfile({
         )}
       </div>
 
-      {/* ── LEGAL FOOTER ── */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0,
         background: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
