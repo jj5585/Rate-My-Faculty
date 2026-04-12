@@ -26,7 +26,9 @@ export async function GET(req: NextRequest) {
         select: { faculty: true },
       },
     },
-    orderBy: { name: "asc" },
+    orderBy: {
+       faculty: { _count: "desc" },
+    },
   })
 
   // FIX #3: Add Vercel Edge cache headers.

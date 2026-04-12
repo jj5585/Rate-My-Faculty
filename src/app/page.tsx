@@ -25,7 +25,7 @@ export default async function HomePage() {
         select: { faculty: true },
       },
     },
-    orderBy: { name: "asc" },
+    orderBy: { faculty: { _count: "desc" } },
   })
 
   return <HomeClientShell initialColleges={colleges} />
