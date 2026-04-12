@@ -58,7 +58,11 @@ export default function HomeClientShell({
       try {
         const res = await fetch(`/api/colleges?q=${encodeURIComponent(q)}`)
         const data = await res.json()
-        setColleges(data.colleges || [])
+        setColleges(
+          (data.colleges || []).sort(
+            (a: College, b: College) => b._count.faculty - a._count.faculty
+          )
+        )
       } catch {
         // silently keep current list on error
       }
