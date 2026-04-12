@@ -1,4 +1,3 @@
-export const revalidate = 60
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -51,11 +50,21 @@ export async function GET(req: NextRequest) {
       name: f.name,
       designation: f.designation,
       department: f.department,
-      // photoUrl removed to prevent build errors
       ratingCount: count,
       avgRating: avg,
     }
   })
 
-  return NextResponse.json({ faculty: result })
+  // Cache full faculty list for 60s, search results for 10s.
+  // Mirrors the pattern used in api/colleges/route.ts.
+  return NextResponse.json(
+    { faculty: result },
+    {
+      headers: {
+        "Cache-Control": q
+          ? "public, s-maxage=10, stale-while-revalidate=30"
+          : "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    }
+  )
 }

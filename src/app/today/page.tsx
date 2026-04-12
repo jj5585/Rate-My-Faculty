@@ -1,7 +1,18 @@
-"use client"
+// FIX: Converted from "use client" + useEffect fetch to Server Component.
+//
+// Before: fetch("/api/recent-ratings") ran on every page mount.
+//         Every visitor triggered a serverless invocation.
+//
+// After:  Prisma runs at request time with ISR (revalidate=60).
+//         At most 1 DB call per minute regardless of visitor count.
+//         The existing revalidatePath(`/faculty/${facultyId}`) in /api/ratings
+//         does NOT invalidate this page — add revalidatePath("/today") there
+//         if you want instant updates after new ratings (see comment below).
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
+import { prisma } from "@/lib/prisma"
+
+export const revalidate = 60
 
 const CRITERIA_LABELS: Record<string, string> = {
   teachingClarity: "Teaching",
@@ -12,8 +23,8 @@ const CRITERIA_LABELS: Record<string, string> = {
   behaviour: "Behaviour",
 }
 
-function timeAgo(date: string) {
-  const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+function timeAgo(date: Date) {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000)
   if (diff < 60) return "just now"
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
@@ -27,18 +38,32 @@ function scoreColor(score: number) {
   return "#f87171"
 }
 
-export default function TodayPage() {
-  const [ratings, setRatings] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+export default async function TodayPage() {
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
 
-  useEffect(() => {
-    fetch("/api/recent-ratings")
-      .then(r => r.json())
-      .then(data => {
-        setRatings(data.ratings || [])
-        setLoading(false)
-      })
-  }, [])
+  const ratings = await prisma.rating.findMany({
+    where: {
+      createdAt: { gte: startOfDay },
+      review: { not: null },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      teachingClarity: true,
+      approachability: true,
+      gradingFairness: true,
+      punctuality: true,
+      partiality: true,
+      behaviour: true,
+      review: true,
+      createdAt: true,
+      faculty: {
+        select: { id: true, name: true, department: true },
+      },
+    },
+  })
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8" }}>
@@ -53,26 +78,19 @@ export default function TodayPage() {
         .fade-up { animation: fadeUp 0.4s ease forwards; }
 
         .review-card {
-          background: #0d0d0d;
-          border: 1px solid #141414;
-          border-radius: 4px;
-          padding: 20px;
-          transition: border-color 0.2s;
+          background: #0d0d0d; border: 1px solid #141414;
+          border-radius: 4px; padding: 20px; transition: border-color 0.2s;
         }
         .review-card:hover { border-color: #1e1e1e; }
 
         .score-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-          padding: 14px 0;
-          border-top: 1px solid #111;
-          border-bottom: 1px solid #111;
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          gap: 10px; padding: 14px 0;
+          border-top: 1px solid #111; border-bottom: 1px solid #111;
           margin: 14px 0;
         }
       `}} />
 
-      {/* NAV */}
       <nav style={{
         position: "sticky", top: 0, zIndex: 100,
         backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
@@ -88,12 +106,7 @@ export default function TodayPage() {
       </nav>
 
       <main style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 80px" }}>
-
-        {loading ? (
-          <div className="dmsans" style={{ padding: "60px 0", textAlign: "center", color: "#333", fontSize: "13px" }}>
-            Syncing latest reviews...
-          </div>
-        ) : ratings.length === 0 ? (
+        {ratings.length === 0 ? (
           <div style={{ padding: "60px 20px", textAlign: "center", border: "1px solid #141414" }}>
             <p className="playfair" style={{ fontSize: "22px", fontStyle: "italic", color: "#2a2a2a", margin: "0 0 12px" }}>
               The campus is quiet.
@@ -118,16 +131,14 @@ export default function TodayPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {ratings.map((r, idx) => {
                 const overall = (
-                  (r.teachingClarity + r.approachability + r.gradingFairness +
-                   r.punctuality + r.partiality + r.behaviour) / 6
-                )
+                  r.teachingClarity + r.approachability + r.gradingFairness +
+                  r.punctuality + r.partiality + r.behaviour
+                ) / 6
                 const overallStr = overall.toFixed(1)
                 const col = scoreColor(overall)
 
                 return (
                   <div key={r.id} className="review-card fade-up" style={{ animationDelay: `${idx * 0.04}s` }}>
-
-                    {/* Top: score + time */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
                         <span className="playfair" style={{ fontSize: "28px", fontWeight: 700, color: col }}>
@@ -136,11 +147,20 @@ export default function TodayPage() {
                         <span className="dmsans" style={{ fontSize: "11px", color: "#333" }}>/5 overall</span>
                       </div>
                       <span className="dmsans" style={{ fontSize: "11px", color: "#444", paddingTop: "4px" }}>
-                        {timeAgo(r.createdAt)}
+                        {timeAgo(new Date(r.createdAt))}
                       </span>
                     </div>
 
-                    {/* Written review */}
+                    {r.faculty && (
+                      <Link href={`/faculty/${r.faculty.id}`} className="dmsans" style={{
+                        fontSize: "12px", color: "#555", textDecoration: "none",
+                        display: "block", marginBottom: "10px",
+                      }}>
+                        {r.faculty.name}
+                        {r.faculty.department && <span style={{ color: "#333" }}> · {r.faculty.department}</span>}
+                      </Link>
+                    )}
+
                     {r.review && (
                       <p className="dmsans" style={{
                         fontSize: "14px", lineHeight: "1.7", color: "#ccc",
@@ -151,22 +171,20 @@ export default function TodayPage() {
                       </p>
                     )}
 
-                    {/* Score grid */}
                     <div className="score-grid">
                       {Object.entries(CRITERIA_LABELS).map(([key, label]) => (
                         <div key={key}>
                           <p className="tag" style={{ marginBottom: "3px", color: "#444" }}>{label}</p>
                           <p className="dmsans" style={{ fontSize: "13px", fontWeight: 600, color: "#888", margin: 0 }}>
-                            {r[key]}<span style={{ fontSize: "10px", color: "#333" }}>/5</span>
+                            {(r as any)[key]}<span style={{ fontSize: "10px", color: "#333" }}>/5</span>
                           </p>
                         </div>
                       ))}
                     </div>
 
-                    {/* Footer */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span className="tag" style={{ color: "#2a2a2a" }}>Verified Anonymous</span>
-                      {r.faculty?.name && (
+                      {r.faculty && (
                         <Link href={`/faculty/${r.faculty.id}`} className="dmsans" style={{
                           fontSize: "11px", color: "#c8a96e", textDecoration: "none",
                           fontWeight: 600, letterSpacing: "0.3px",

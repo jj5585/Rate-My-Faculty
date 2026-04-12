@@ -8,7 +8,6 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    // 🔒 MUST BE LOGGED IN
     if (!session || !session.user?.email) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -26,13 +25,11 @@ export async function POST(req: Request) {
       review,
     } = body;
 
-    // 🔐 HASH USER (prevents multiple reviews)
     const ratingHash = crypto
       .createHash("sha256")
       .update(session.user.email + facultyId)
       .digest("hex");
 
-    // 🔥 PREVENT DUPLICATE REVIEWS
     const existing = await prisma.rating.findUnique({
       where: { ratingHash },
     });
@@ -44,7 +41,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ CREATE RATING
     await prisma.rating.create({
       data: {
         facultyId,
@@ -59,10 +55,10 @@ export async function POST(req: Request) {
       },
     });
 
-    // ♻️ ON-DEMAND REVALIDATION
-    // Instantly purge the ISR cache for this faculty's page so the
-    // next visitor sees the new rating, rather than waiting up to 1 hour.
+    // Purge ISR cache for the faculty page and the global today feed
+    // so both update immediately after a new rating is posted.
     revalidatePath(`/faculty/${facultyId}`);
+    revalidatePath("/today");
 
     return Response.json({ success: true });
   } catch (err) {

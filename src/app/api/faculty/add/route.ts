@@ -1,10 +1,13 @@
 // src/app/api/faculty/add/route.ts
-// Manually add a faculty member to a college (any signed-in user)
+// FIX #7: Call revalidatePath after adding faculty so the college page
+// ISR cache is immediately invalidated. Without this, a newly added
+// faculty member wouldn't appear on the college page for up to 120s.
 
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { prisma } from "@/lib/prisma"
+import { revalidatePath } from "next/cache"
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -23,7 +26,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Please select a college" }, { status: 400 })
   }
 
-  // Verify college is approved
   const college = await prisma.college.findUnique({
     where: { id: collegeId, status: "APPROVED" },
   })
@@ -32,7 +34,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "College not found or not yet approved" }, { status: 404 })
   }
 
-  // If profileUrl given, check for duplicates
   if (profileUrl) {
     const existing = await prisma.faculty.findUnique({ where: { profileUrl } })
     if (existing) {
@@ -40,7 +41,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Check by name + college to avoid duplicates
   const nameMatch = await prisma.faculty.findFirst({
     where: {
       name: { equals: name.trim(), mode: "insensitive" },
@@ -67,6 +67,11 @@ export async function POST(req: NextRequest) {
       collegeId,
     },
   })
+
+  // FIX #7: Invalidate the college page ISR cache immediately.
+  // Without this, the new faculty member wouldn't appear until the 120s
+  // revalidate window expires. This makes the update instant.
+  revalidatePath(`/colleges/${collegeId}`)
 
   return NextResponse.json({ success: true, facultyId: faculty.id })
 }

@@ -29,7 +29,23 @@ export async function GET(req: NextRequest) {
     orderBy: { name: "asc" },
   })
 
-  return NextResponse.json({ colleges })
+  // FIX #3: Add Vercel Edge cache headers.
+  // Without these, every request hit the serverless function and DB.
+  // With these: Vercel Edge serves cached responses; function only runs on cache miss.
+  //
+  // Search requests (q param) get a shorter TTL since results vary per query.
+  // Non-search (homepage list) gets 60s cache — colleges rarely change.
+  // stale-while-revalidate means users never wait for a fresh response.
+  return NextResponse.json(
+    { colleges },
+    {
+      headers: {
+        "Cache-Control": q
+          ? "public, s-maxage=10, stale-while-revalidate=30"
+          : "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    }
+  )
 }
 
 // POST /api/colleges — submit a new college for review
@@ -50,7 +66,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Please provide a valid website URL" }, { status: 400 })
   }
 
-  // Check for duplicate submissions (same name)
   const existing = await prisma.college.findFirst({
     where: { name: { equals: name.trim(), mode: "insensitive" } },
   })

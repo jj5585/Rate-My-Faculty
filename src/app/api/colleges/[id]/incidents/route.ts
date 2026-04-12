@@ -1,7 +1,3 @@
-// src/app/api/colleges/[id]/incidents/route.ts
-// GET  — fetch active incidents for a specific college
-// POST — post an incident scoped to a college
-
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
@@ -16,7 +12,6 @@ export async function GET(
   const { id } = await params
   const now = new Date()
 
-  // Verify college exists and is approved
   const college = await prisma.college.findUnique({
     where: { id, status: "APPROVED" },
     select: { id: true, name: true },
@@ -38,11 +33,14 @@ export async function GET(
       include: { _count: { select: { reports: true } } },
     })
 
+    // FIX #3c: Short cache for the live feed — 10s is enough to prevent the
+    // duplicate calls logged within milliseconds of each other (prefetch storms).
+    // stale-while-revalidate=30 means users always see near-fresh data.
     return NextResponse.json(
       { incidents, college },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=10, stale-while-revalidate=59",
+          "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
         },
       }
     )
@@ -64,7 +62,6 @@ export async function POST(
 
   const { id } = await params
 
-  // Verify college exists and is approved
   const college = await prisma.college.findUnique({
     where: { id, status: "APPROVED" },
     select: { id: true },
@@ -94,7 +91,7 @@ export async function POST(
         category,
         userHash,
         expiresAt,
-        collegeId: id, // scoped to this college
+        collegeId: id,
       },
     })
 
@@ -102,5 +99,4 @@ export async function POST(
   } catch (error) {
     return NextResponse.json({ error: "Failed to post" }, { status: 500 })
   }
-
 }

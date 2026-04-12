@@ -1,6 +1,3 @@
-// src/app/api/colleges/[id]/recent-ratings/route.ts
-// GET — today's written reviews for faculty belonging to a specific college
-
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -10,7 +7,6 @@ export async function GET(
 ) {
   const { id } = await params
 
-  // Verify college exists and is approved
   const college = await prisma.college.findUnique({
     where: { id, status: "APPROVED" },
     select: { id: true, name: true },
@@ -27,9 +23,7 @@ export async function GET(
     where: {
       createdAt: { gte: startOfDay },
       review: { not: null },
-      faculty: {
-        collegeId: id, // join through faculty to scope by college
-      },
+      faculty: { collegeId: id },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -53,5 +47,16 @@ export async function GET(
     },
   })
 
-  return NextResponse.json({ ratings, college })
+  // FIX #3d: Cache "today's reviews" for 30s.
+  // The logs showed /colleges/[id]/today hitting the DB on every prefetch from
+  // the bottom nav. 30s cache means at most 2 DB calls/minute instead of
+  // potentially dozens during active usage.
+  return NextResponse.json(
+    { ratings, college },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+      },
+    }
+  )
 }

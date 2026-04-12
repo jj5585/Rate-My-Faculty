@@ -24,7 +24,20 @@ export async function GET(
     take: 100,
   })
 
-  return NextResponse.json({ messages, room })
+  // FIX: private cache (password-protected) with 5s TTL.
+  // "private" means Vercel Edge won't share this response between users —
+  // each user's password is part of the URL so responses are already scoped,
+  // but "private" adds an explicit signal.
+  // s-maxage=5 collapses the 3s polling bursts that were visible in the logs:
+  // multiple rapid calls within the same 5s window hit the Edge cache instead of DB.
+  return NextResponse.json(
+    { messages, room },
+    {
+      headers: {
+        "Cache-Control": "private, s-maxage=5, stale-while-revalidate=3",
+      },
+    }
+  )
 }
 
 export async function POST(
@@ -53,7 +66,7 @@ export async function POST(
   const userHash = createHash("sha256")
     .update(session.user.email + room.id)
     .digest("hex")
-    .slice(0, 8) // short hash for "Anonymous A1B2C3D4" style display
+    .slice(0, 8)
 
   const message = await prisma.gossipMessage.create({
     data: {
