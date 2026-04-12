@@ -34,8 +34,22 @@ export const metadata: Metadata = {
     icon: "/icon-512.png",
     apple: "/icon-512.png",
   },
-  // ... rest unchanged
-}
+  openGraph: {
+    title: "Rate My Faculty — SRMIST",
+    description: "Rate your professors anonymously. Honest reviews by real students.",
+    url: "https://rate-my-faculty.vercel.app",
+    siteName: "Rate My Faculty",
+    images: [
+      {
+        url: "https://rate-my-faculty.vercel.app/og-image.jpg",
+        width: 1080,
+        height: 1080,
+        alt: "Rate My Faculty",
+      },
+    ],
+    type: "website",
+  },
+};
 
 export default function RootLayout({
   children,
