@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,7 +24,6 @@ export const metadata: Metadata = {
   title: "Rate My Faculty — SRMIST",
   description: "Anonymous faculty reviews by SRMIST students. Rate your professors on teaching, approachability, fairness and more.",
   manifest: "/manifest.json",
-  // ADDED GOOGLE VERIFICATION HERE
   verification: {
     google: "hmeISNjUVRQpT7myKlg6WLBg7_-Yn_Ij7CSl5QFaTXU",
   },
@@ -58,6 +58,14 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9410534184843151"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
         <Analytics />
