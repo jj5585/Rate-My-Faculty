@@ -37,11 +37,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Rate My Faculty — SRMIST",
     description: "Rate your professors anonymously. Honest reviews by real students.",
-    url: "https://rate-my-faculty.vercel.app",
+    url: "https://rate-my-facult.me",
     siteName: "Rate My Faculty",
     images: [
       {
-        url: "https://rate-my-faculty.vercel.app/og-image.jpg",
+        url: "https://rate-my-facult.me/og-image.jpg",
         width: 1080,
         height: 1080,
         alt: "Rate My Faculty",
