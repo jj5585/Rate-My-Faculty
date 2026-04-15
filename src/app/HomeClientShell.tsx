@@ -501,7 +501,11 @@ export default function HomeClientShell({
         </div>
 
         {/* FOOTER */}
-        <div style={{ borderTop: "1px solid #141414", padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
+        <div style={{
+          borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: "rgb(20, 20, 20)",
+          paddingTop: "24px", paddingRight: "24px", paddingBottom: "100px", paddingLeft: "24px",
+          maxWidth: "800px", marginTop: "0px", marginRight: "auto", marginBottom: "0px", marginLeft: "auto",
+        }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
             <p className="dmsans" style={{ fontSize: "11px", color: "#333", lineHeight: "1.6" }}>
               All content represents user opinions.{" "}
@@ -515,6 +519,50 @@ export default function HomeClientShell({
           </div>
         </div>
       </main>
+
+      {/* FLOATING BOTTOM NAV */}
+      <div style={{
+        position: "fixed",
+        bottom: "28px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        backgroundColor: "rgba(13, 13, 13, 0.85)",
+        backdropFilter: "blur(20px)",
+        border: "1px solid #1e1e1e",
+        borderRadius: "40px",
+        display: "flex",
+        padding: "6px 8px",
+        gap: "4px",
+        zIndex: 200,
+        boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
+      }}>
+        <Link
+          href="/"
+          style={{
+            padding: "10px 22px", borderRadius: "30px",
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: "12px", color: "#fff",
+            textDecoration: "none", fontWeight: 700,
+            background: "rgba(200,169,110,0.12)",
+            border: "1px solid rgba(200,169,110,0.2)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Home
+        </Link>
+        <Link
+          href="/stories"
+          style={{
+            padding: "10px 22px", borderRadius: "30px",
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: "12px", color: "#666",
+            textDecoration: "none", fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Stories
+        </Link>
+      </div>
     </div>
   )
 }

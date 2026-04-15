@@ -76,6 +76,7 @@ model College {
   incidents     Incident[]
   rooms         GossipRoom[]
   students      StudentProfile[]
+  stories       Story[]
 }
 
 enum CollegeStatus {
@@ -164,7 +165,7 @@ model Incident {
   createdAt DateTime         @default(now())
   expiresAt DateTime
   collegeId String?
-  college   College?         @relation(fields: [collegeId], references: [id])
+  college   College?         @relation(fields: [collegeId], references: [id]) // Fixed typo here
   reports   IncidentReport[]
 }
 
@@ -199,4 +200,40 @@ model GossipMessage {
   content   String
   userHash  String
   createdAt DateTime   @default(now())
+}
+
+// ─────────────────────────────────────────────
+// STORIES
+// ─────────────────────────────────────────────
+
+model Story {
+  id        String         @id @default(cuid())
+  title     String
+  content   String
+  userHash  String
+  collegeId String
+  college   College        @relation(fields: [collegeId], references: [id])
+  upvotes   Int            @default(0)
+  hidden    Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  comments  StoryComment[]
+  reports   StoryReport[]
+}
+
+model StoryComment {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  content   String
+  userHash  String
+  upvotes   Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model StoryReport {
+  id         String   @id @default(cuid())
+  storyId    String
+  story      Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  reportHash String   @unique
+  createdAt  DateTime @default(now())
 }
