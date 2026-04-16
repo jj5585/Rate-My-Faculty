@@ -15,7 +15,7 @@ import HomeClientShell from "./HomeClientShell"
 // Revalidate every 2 minutes. College list changes infrequently.
 // When a new college is approved via admin, you can call
 // revalidatePath("/") from /api/admin/colleges/[id]/route.ts to invalidate immediately.
-export const revalidate = 120
+export const dynamic = "force-dynamic"
 
 export default async function HomePage() {
   const colleges = await prisma.college.findMany({
