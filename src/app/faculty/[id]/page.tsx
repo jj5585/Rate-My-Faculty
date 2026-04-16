@@ -162,7 +162,8 @@ export default async function FacultyProfile({
         <span className="playfair" style={{ fontSize: "15px", fontWeight: 700 }}>
           Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
         </span>
-        <div style={{ width: "60px" }} />
+        <div style={{ width: "60px", display: "flex", justifyContent: "flex-end" }}>
+        </div>
       </nav>
 
       <div className="fade-up" style={{
@@ -341,6 +342,7 @@ export default async function FacultyProfile({
         background: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
         borderTop: "1px solid #141414",
         padding: "10px 20px",
+        zIndex: 9998,
       }}>
         <p className="dmsans" style={{ fontSize: "9px", color: "#2a2a2a", textAlign: "center", lineHeight: "1.5" }}>
           Content represents user opinions. We do not verify claims.{" "}
@@ -348,6 +350,91 @@ export default async function FacultyProfile({
           {" · "}
           <Link href="/privacy" style={{ color: "#3a3a3a", textDecoration: "underline" }}>Privacy</Link>
         </p>
+      </div>
+
+      {/* FLOATING BOTTOM UI */}
+      <div style={{
+        position: "fixed",
+        bottom: "32px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        zIndex: 9999,
+        width: "max-content",
+        maxWidth: "95vw"
+      }}>
+        {/* Navigation Pill */}
+        <div style={{
+          backgroundColor: "rgba(13, 13, 13, 0.8)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid #1e1e1e",
+          borderRadius: "40px",
+          display: "flex",
+          padding: "8px 12px",
+          gap: "8px",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
+          height: "52px",
+          alignItems: "center"
+        }}>
+          <Link
+            href={faculty.collegeId ? `/colleges/${faculty.collegeId}/feed` : "/"}
+            prefetch={false}
+            className="dmsans"
+            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#fff", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Feed
+          </Link>
+          <Link
+            href={faculty.collegeId ? `/colleges/${faculty.collegeId}/today` : "/"}
+            prefetch={false}
+            className="dmsans"
+            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Today
+          </Link>
+          <Link
+            href="/rooms"
+            prefetch={false}
+            className="dmsans"
+            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Rooms
+          </Link>
+        </div>
+
+        {/* Circular Logo Button */}
+        {faculty.collegeId === 'srmist-kattankulathur' && (
+          <a
+            href="https://www.fcukacademia.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Visit FcuK Academia"
+            style={{
+              width: "52px",
+              height: "52px",
+              borderRadius: "50%",
+              overflow: "hidden",
+              border: "1px solid #c8a96e",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(13, 13, 13, 0.9)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 0 20px rgba(200, 169, 110, 0.3), 0 20px 50px rgba(0,0,0,0.8)",
+              transition: "all 0.3s ease",
+              cursor: "pointer",
+              flexShrink: 0
+            }}
+          >
+            <img 
+              src="/fcuk-logo.png" 
+              alt="FcuK Academia" 
+              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+            />
+          </a>
+        )}
       </div>
     </div>
   );

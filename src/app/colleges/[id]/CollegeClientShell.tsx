@@ -172,13 +172,15 @@ export default function CollegeClientShell({
         <Link href="/" className="playfair" style={{ fontSize: "16px", fontWeight: 700, color: "#f0ede8", textDecoration: "none" }}>
           Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
         </Link>
-        <button
-          className="dmsans"
-          onClick={() => !session && signIn("google")}
-          style={{ fontSize: "11px", color: "#555", background: "none", border: "none", cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase" }}
-        >
-          {session ? session.user?.name?.split(" ")[0] : "Sign In"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button
+            className="dmsans"
+            onClick={() => !session && signIn("google")}
+            style={{ fontSize: "11px", color: "#555", background: "none", border: "none", cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase" }}
+          >
+            {session ? session.user?.name?.split(" ")[0] : "Sign In"}
+          </button>
+        </div>
       </nav>
 
       {/* COLLEGE HEADER */}
@@ -369,53 +371,89 @@ export default function CollegeClientShell({
         </div>
       )}
 
-      {/* FLOATING BOTTOM NAV
-          FIX #5: prefetch={false} on all nav links.
-          Without this, Next.js eagerly prefetches /feed and /today on every
-          college page render, causing the duplicate feed+today calls in the logs.
-          These pages are only loaded when the user explicitly taps the tab.
-      */}
+      {/* FLOATING BOTTOM UI */}
       <div style={{
         position: "fixed",
         bottom: "32px",
         left: "50%",
         transform: "translateX(-50%)",
-        backgroundColor: "rgba(13, 13, 13, 0.8)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid #1e1e1e",
-        borderRadius: "40px",
         display: "flex",
-        padding: "8px 12px",
-        gap: "8px",
+        alignItems: "center",
+        gap: "12px",
         zIndex: 9999,
-        boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
         width: "max-content",
-        maxWidth: "90vw"
+        maxWidth: "95vw"
       }}>
-        <Link
-          href={`/colleges/${college.id}/feed`}
-          prefetch={false}
-          className="dmsans"
-          style={{ padding: "10px 18px", borderRadius: "30px", fontSize: "12px", color: "#fff", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
-        >
-          Feed
-        </Link>
-        <Link
-          href={`/colleges/${college.id}/today`}
-          prefetch={false}
-          className="dmsans"
-          style={{ padding: "10px 18px", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
-        >
-          Today
-        </Link>
-        <Link
-          href="/rooms"
-          prefetch={false}
-          className="dmsans"
-          style={{ padding: "10px 18px", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
-        >
-          Rooms
-        </Link>
+        {/* Navigation Pill */}
+        <div style={{
+          backgroundColor: "rgba(13, 13, 13, 0.8)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid #1e1e1e",
+          borderRadius: "40px",
+          display: "flex",
+          padding: "8px 12px",
+          gap: "8px",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
+          height: "52px",
+          alignItems: "center"
+        }}>
+          <Link
+            href={`/colleges/${college.id}/feed`}
+            prefetch={false}
+            className="dmsans"
+            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#fff", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Feed
+          </Link>
+          <Link
+            href={`/colleges/${college.id}/today`}
+            prefetch={false}
+            className="dmsans"
+            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Today
+          </Link>
+          <Link
+            href="/rooms"
+            prefetch={false}
+            className="dmsans"
+            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Rooms
+          </Link>
+        </div>
+
+        {/* Circular Logo Button */}
+        {college.id === 'srmist-kattankulathur' && (
+          <a
+            href="https://www.fcukacademia.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Visit FcuK Academia"
+            style={{
+              width: "52px",
+              height: "52px",
+              borderRadius: "50%",
+              overflow: "hidden",
+              border: "1px solid #c8a96e",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(13, 13, 13, 0.9)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 0 20px rgba(200, 169, 110, 0.3), 0 20px 50px rgba(0,0,0,0.8)",
+              transition: "all 0.3s ease",
+              cursor: "pointer",
+              flexShrink: 0
+            }}
+          >
+            <img 
+              src="/fcuk-logo.png" 
+              alt="FcuK Academia" 
+              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+            />
+          </a>
+        )}
       </div>
     </div>
   )
