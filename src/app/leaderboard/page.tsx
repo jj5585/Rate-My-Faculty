@@ -12,7 +12,7 @@
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 
-export const revalidate = 120
+export const dynamic = "force-dynamic"
 
 function medalEmoji(i: number) {
   if (i === 0) return "🥇"
