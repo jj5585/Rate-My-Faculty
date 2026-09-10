@@ -25,20 +25,32 @@ export default function RatingReportButton({ ratingId }: { ratingId: string }) {
     }
   }
 
+  const label = reported
+    ? "Review reported for moderation"
+    : loading
+      ? "Reporting review..."
+      : "Flag this review for moderation"
+
   return (
     <button
       onClick={handleReport}
-      title="Flag this review for moderation"
-      disabled={loading}
-      style={{
-        background: "none", border: "none",
-        cursor: reported ? "default" : "pointer",
-        fontSize: "10px", fontWeight: 700, letterSpacing: "0.5px",
-        color: reported ? "#3f3f46" : "#ef4444",
-        opacity: loading ? 0.5 : 1, padding: "2px 0", transition: "color 0.2s",
-      }}
+      title={label}
+      aria-label={label}
+      aria-busy={loading}
+      disabled={loading || reported}
+      className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all flex items-center gap-1 ${
+        reported
+          ? "bg-white/5 text-white/50 border border-white/10 cursor-default"
+          : "liquid-glass-pill text-rose-400 hover:text-rose-300 hover:border-rose-400/30 cursor-pointer active:scale-95"
+      } ${loading ? "opacity-50" : "opacity-100"}`}
     >
-      {reported ? "✓ REPORTED" : "⚑ REPORT"}
+      <span className="material-symbols-outlined text-[13px]" aria-hidden="true">
+        {reported ? "check" : "flag"}
+      </span>
+      <span>{reported ? "REPORTED" : "REPORT"}</span>
+      <span role="status" aria-live="polite" className="sr-only">
+        {reported ? "Review has been reported for moderation." : ""}
+      </span>
     </button>
   )
 }

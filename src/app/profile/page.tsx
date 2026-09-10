@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const [colleges, setColleges] = useState<College[]>([])
   const [collegeQuery, setCollegeQuery] = useState("")
   const [showCollegeDropdown, setShowCollegeDropdown] = useState(false)
+  const [activeCollegeIndex, setActiveCollegeIndex] = useState(-1)
 
   // Form state
   const [form, setForm] = useState({
@@ -85,6 +86,7 @@ export default function ProfilePage() {
     setCollegeQuery(val)
     setForm(f => ({ ...f, collegeId: "", collegeName: "" }))
     setShowCollegeDropdown(true)
+    setActiveCollegeIndex(-1)
     const timer = setTimeout(() => searchColleges(val), 300)
     return () => clearTimeout(timer)
   }
@@ -94,6 +96,35 @@ export default function ProfilePage() {
     setCollegeQuery(c.name)
     setColleges([])
     setShowCollegeDropdown(false)
+    setActiveCollegeIndex(-1)
+  }
+
+  const handleCollegeKeyDown = (e: React.KeyboardEvent) => {
+    if (!showCollegeDropdown || colleges.length === 0) {
+      if (e.key === "ArrowDown" && colleges.length > 0) {
+        setShowCollegeDropdown(true)
+        setActiveCollegeIndex(0)
+        e.preventDefault()
+      }
+      return
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setActiveCollegeIndex(prev => (prev < colleges.length - 1 ? prev + 1 : 0))
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setActiveCollegeIndex(prev => (prev > 0 ? prev - 1 : colleges.length - 1))
+    } else if (e.key === "Enter") {
+      if (activeCollegeIndex >= 0 && activeCollegeIndex < colleges.length) {
+        e.preventDefault()
+        selectCollege(colleges[activeCollegeIndex])
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      setShowCollegeDropdown(false)
+      setActiveCollegeIndex(-1)
+    }
   }
 
   async function handleSave() {
@@ -128,209 +159,129 @@ export default function ProfilePage() {
 
   // ── Auth gate ──
   if (status === "loading") {
-    return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
-  }
-
-  if (!session) {
     return (
-      <div style={{
-        minHeight: "100vh", backgroundColor: "#080808",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "24px",
-      }}>
-        <div style={{ textAlign: "center", maxWidth: "320px" }}>
-          <div style={{
-            width: "64px", height: "64px", borderRadius: "50%",
-            border: "1px solid rgba(200,169,110,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 24px", fontSize: "28px",
-          }}>
-            👤
-          </div>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "26px", fontWeight: 700, color: "#f0ede8", marginBottom: "12px" }}>
-            Your Profile
-          </h1>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "#666", marginBottom: "32px", lineHeight: "1.6" }}>
-            Sign in to set up your student profile.
-          </p>
-          <button
-            onClick={() => signIn("google")}
-            style={{
-              width: "100%", background: "#c8a96e", color: "#080808",
-              border: "none", padding: "14px", borderRadius: "2px",
-              fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
-              fontSize: "13px", letterSpacing: "0.5px", cursor: "pointer",
-              textTransform: "uppercase",
-            }}
-          >
-            Sign in with Google
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center text-cyan-300 font-semibold text-sm">
+        Loading profile...
       </div>
     )
   }
 
+  if (!session) {
+    return (
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center p-6 relative z-10 pb-36 outline-none">
+        <div className="w-full max-w-sm rounded-[28px] liquid-glass p-8 text-center flex flex-col items-center gap-4 border border-white/15 shadow-liquid-glow">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600/30 via-indigo-600/20 to-cyan-400/30 border border-white/20 flex items-center justify-center text-cyan-300">
+            <span className="material-symbols-outlined text-[32px]" aria-hidden="true">account_circle</span>
+          </div>
+
+          <div>
+            <h1 className="text-[22px] font-extrabold text-white tracking-tight m-0">Student Profile</h1>
+            <p className="text-[13px] text-white/60 mt-1 mb-0 leading-relaxed">
+              Sign in with your Google account to customize your academic identity and track your campus contributions.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => signIn("google")}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-bold text-[14px] flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(10,132,255,0.4)] hover:brightness-110 transition-all cursor-pointer"
+          >
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+      </main>
+    )
+  }
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8" }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
-        * { box-sizing: border-box; }
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
-        .tag { font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; }
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white pb-36">
+      {/* Top Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all no-underline"
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+            <span>Home</span>
+          </Link>
 
-        .form-input {
-          width: 100%;
-          background: #0a0a0a;
-          border: 1px solid #1e1e1e;
-          border-radius: 2px;
-          color: #f0ede8;
-          padding: 13px 16px;
-          font-size: 14px;
-          outline: none;
-          font-family: 'DM Sans', sans-serif;
-          transition: border-color 0.2s;
-        }
-        .form-input:focus { border-color: #c8a96e; }
-        .form-input::placeholder { color: #333; }
+          <h1 className="text-[17px] font-extrabold text-white tracking-tight m-0">
+            Student <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">Profile</span>
+          </h1>
 
-        select.form-input option { background: #111; }
+          <div className="px-2 py-0.5 rounded-full liquid-badge text-[10px] font-bold text-emerald-300 uppercase tracking-widest flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Active</span>
+          </div>
+        </div>
+      </header>
 
-        .save-btn {
-          width: 100%;
-          background: #c8a96e;
-          color: #080808;
-          border: none;
-          padding: 14px;
-          border-radius: 2px;
-          font-family: 'DM Sans', sans-serif;
-          font-weight: 700;
-          font-size: 13px;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          cursor: pointer;
-          transition: background 0.2s, opacity 0.2s;
-        }
-        .save-btn:hover { background: #d4b87a; }
-        .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .edit-btn {
-          background: transparent;
-          border: 1px solid #c8a96e;
-          color: #c8a96e;
-          padding: 8px 20px;
-          border-radius: 2px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .edit-btn:hover { background: rgba(200,169,110,0.1); }
-
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          padding: 16px 0;
-          border-bottom: 1px solid #111;
-          gap: 16px;
-        }
-        .info-row:last-child { border-bottom: none; }
-
-        .college-dropdown {
-          position: absolute;
-          top: calc(100% + 4px);
-          left: 0; right: 0;
-          background: #111;
-          border: 1px solid #1e1e1e;
-          border-radius: 2px;
-          z-index: 50;
-          max-height: 200px;
-          overflow-y: auto;
-        }
-        .college-option {
-          padding: 12px 16px;
-          cursor: pointer;
-          border-bottom: 1px solid #141414;
-          transition: background 0.1s;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13px;
-          color: #f0ede8;
-        }
-        .college-option:last-child { border-bottom: none; }
-        .college-option:hover { background: #1a1a1a; }
-      `}} />
-
-      {/* Nav */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #141414",
-        padding: "0 20px", height: "52px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <Link href="/" className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>
-          ← Home
-        </Link>
-        <span className="playfair" style={{ fontSize: "15px", fontWeight: 700 }}>
-          Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
-        </span>
-        <div style={{ width: "48px" }} />
-      </nav>
-
-      <div style={{ maxWidth: "560px", margin: "0 auto", padding: "40px 20px 80px" }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: "36px" }}>
-          <span className="tag" style={{ display: "block", marginBottom: "10px" }}>Student Profile</span>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <h1 className="playfair" style={{ fontSize: "32px", fontWeight: 900, letterSpacing: "-0.5px", margin: "0 0 6px" }}>
-                {profile?.displayName || session.user?.name || "Your Profile"}
-              </h1>
-              <p className="dmsans" style={{ fontSize: "13px", color: "#555" }}>
-                {session.user?.email}
-              </p>
+      {/* Main Container */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 z-10 flex flex-col gap-4 max-w-md mx-auto outline-none">
+        {/* User Hero Capsule */}
+        <div className="rounded-[24px] liquid-glass p-5 border border-white/15 flex items-center gap-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          {session.user?.image ? (
+            <img
+              src={session.user.image}
+              alt={session.user?.name ? `${session.user.name}'s profile avatar` : "Profile avatar"}
+              className="w-16 h-16 rounded-2xl border-2 border-cyan-400/40 object-cover shadow-md shrink-0"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/30 to-cyan-500/20 border-2 border-cyan-400/40 flex items-center justify-center text-cyan-300 font-extrabold text-[22px] shrink-0">
+              {(profile?.displayName || session.user?.name || "U").charAt(0)}
             </div>
-            {/* Google avatar */}
-            {session.user?.image && (
-              <img
-                src={session.user.image}
-                alt="avatar"
-                style={{ width: "48px", height: "48px", borderRadius: "50%", border: "1px solid #1e1e1e", flexShrink: 0 }}
-              />
-            )}
+          )}
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-cyan-300">Student Account</span>
+              <span className="material-symbols-outlined text-cyan-400 text-[14px]" aria-hidden="true">verified</span>
+            </div>
+            <h2 className="text-[18px] font-extrabold text-white truncate m-0">
+              {profile?.displayName || session.user?.name || "Student"}
+            </h2>
+            <p className="text-[12px] text-white/50 truncate m-0 mt-0.5">
+              {session.user?.email}
+            </p>
           </div>
         </div>
 
-        {/* Success / error messages */}
+        {/* Save message */}
         {saveMsg && (
-          <div className="dmsans" style={{
-            background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)",
-            borderRadius: "2px", padding: "12px 16px", marginBottom: "20px",
-            fontSize: "13px", color: "#4ade80",
-          }}>
-            ✓ {saveMsg}
+          <div role="status" aria-live="polite" className="p-3.5 rounded-2xl liquid-glass border border-emerald-400/40 text-emerald-300 text-[13px] flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span>
+            <span>{saveMsg}</span>
           </div>
         )}
 
         {/* ── EDIT MODE ── */}
         {editing ? (
-          <div style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: "4px", padding: "24px" }}>
-            <h2 className="playfair" style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 20px" }}>
-              Edit Profile
-            </h2>
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+            className="rounded-[24px] liquid-glass p-5 flex flex-col gap-4 border border-cyan-400/30 shadow-liquid-glow"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-[16px] font-extrabold text-white m-0">Edit Profile</h3>
+              <button
+                type="button"
+                onClick={() => { setEditing(false); setSaveError("") }}
+                className="text-[12px] text-white/50 hover:text-white"
+              >
+                ✕ Cancel
+              </button>
+            </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-
-              {/* Display name */}
+            <div className="flex flex-col gap-3">
+              {/* Display Name */}
               <div>
-                <label className="tag" style={{ display: "block", marginBottom: "8px" }}>Display Name</label>
+                <label htmlFor="profile-display-name" className="block text-[11px] font-bold uppercase tracking-wider text-white/60 mb-1.5">
+                  Display Name
+                </label>
                 <input
-                  className="form-input"
+                  id="profile-display-name"
+                  className="w-full liquid-glass-input p-3 rounded-xl text-[14px] text-white placeholder-white/30 focus:outline-none"
                   placeholder="How you want to appear (e.g. Joel)"
                   value={form.displayName}
                   onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
@@ -339,66 +290,97 @@ export default function ProfilePage() {
 
               {/* Course */}
               <div>
-                <label className="tag" style={{ display: "block", marginBottom: "8px" }}>Course / Programme</label>
+                <label htmlFor="profile-course" className="block text-[11px] font-bold uppercase tracking-wider text-white/60 mb-1.5">
+                  Course / Programme
+                </label>
                 <input
-                  className="form-input"
-                  placeholder="e.g. B.Tech Computer Science and Engineering"
+                  id="profile-course"
+                  className="w-full liquid-glass-input p-3 rounded-xl text-[14px] text-white placeholder-white/30 focus:outline-none"
+                  placeholder="e.g. B.Tech Computer Science"
                   value={form.course}
                   onChange={e => setForm(f => ({ ...f, course: e.target.value }))}
                 />
               </div>
 
-              {/* Graduation year */}
+              {/* Graduation Year */}
               <div>
-                <label className="tag" style={{ display: "block", marginBottom: "8px" }}>Expected Graduation Year</label>
+                <label htmlFor="profile-grad-year" className="block text-[11px] font-bold uppercase tracking-wider text-white/60 mb-1.5">
+                  Expected Graduation Year
+                </label>
                 <select
-                  className="form-input"
+                  id="profile-grad-year"
+                  className="w-full liquid-glass-input p-3 rounded-xl text-[14px] text-white bg-[#0a1224] focus:outline-none"
                   value={form.graduationYear}
                   onChange={e => setForm(f => ({ ...f, graduationYear: e.target.value }))}
                 >
                   <option value="">Select year...</option>
                   {GRAD_YEARS.map(y => (
-                    <option key={y} value={y}>{y}</option>
+                    <option key={y} value={y} className="bg-[#030611] text-white">{y}</option>
                   ))}
                 </select>
               </div>
 
-              {/* College picker */}
+              {/* College Combobox */}
               <div>
-                <label className="tag" style={{ display: "block", marginBottom: "8px" }}>College</label>
-                <div style={{ position: "relative" }}>
+                <label htmlFor="profile-college-search" className="block text-[11px] font-bold uppercase tracking-wider text-white/60 mb-1.5">
+                  College / Institution
+                </label>
+                <div className="relative">
                   <input
-                    className="form-input"
+                    id="profile-college-search"
+                    role="combobox"
+                    aria-expanded={showCollegeDropdown && colleges.length > 0}
+                    aria-autocomplete="list"
+                    aria-controls="profile-college-results"
+                    aria-activedescendant={showCollegeDropdown && colleges.length > 0 && activeCollegeIndex >= 0 && colleges[activeCollegeIndex] ? `college-opt-${colleges[activeCollegeIndex].id}` : undefined}
+                    className="w-full liquid-glass-input p-3 pr-10 rounded-xl text-[14px] text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
                     placeholder="Search your college..."
                     value={collegeQuery}
                     onChange={e => handleCollegeInput(e.target.value)}
+                    onKeyDown={handleCollegeKeyDown}
                     onFocus={() => collegeQuery && setShowCollegeDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowCollegeDropdown(false), 150)}
+                    onBlur={() => setTimeout(() => setShowCollegeDropdown(false), 200)}
                   />
-                  {/* Selected indicator */}
                   {form.collegeId && (
-                    <span style={{
-                      position: "absolute", right: "12px", top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "11px", color: "#4ade80",
-                    }}>✓</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 material-symbols-outlined text-[18px]">
+                      check_circle
+                    </span>
                   )}
+
                   {/* Dropdown */}
                   {showCollegeDropdown && colleges.length > 0 && (
-                    <div className="college-dropdown">
-                      {colleges.map(c => (
-                        <div key={c.id} className="college-option" onMouseDown={() => selectCollege(c)}>
-                          <div style={{ fontWeight: 500 }}>{c.name}</div>
-                          {c.city && <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>{c.city}</div>}
-                        </div>
-                      ))}
-                    </div>
+                    <ul
+                      id="profile-college-results"
+                      role="listbox"
+                      aria-label="College suggestions"
+                      className="absolute top-full mt-1.5 left-0 right-0 max-h-48 overflow-y-auto rounded-xl liquid-glass border border-white/20 p-1 z-50 list-none shadow-2xl"
+                    >
+                      {colleges.map((c, idx) => {
+                        const isSelected = form.collegeId === c.id
+                        const isActive = activeCollegeIndex === idx
+                        return (
+                          <li
+                            key={c.id}
+                            id={`college-opt-${c.id}`}
+                            role="option"
+                            aria-selected={isSelected || isActive}
+                            onMouseDown={() => selectCollege(c)}
+                            className={`p-2.5 rounded-lg cursor-pointer transition-colors text-left ${
+                              isActive ? "bg-white/20 border border-cyan-400/40" : "hover:bg-white/10"
+                            }`}
+                          >
+                            <p className="text-[13px] font-bold text-white m-0">{c.name}</p>
+                            {c.city && <p className="text-[11px] text-white/50 m-0">{c.city}</p>}
+                          </li>
+                        )
+                      })}
+                    </ul>
                   )}
+
                   {showCollegeDropdown && collegeQuery && colleges.length === 0 && (
-                    <div className="college-dropdown">
-                      <div style={{ padding: "12px 16px", fontSize: "12px", color: "#444", fontFamily: "'DM Sans', sans-serif" }}>
-                        No approved colleges found. <Link href="/" style={{ color: "#c8a96e" }}>Submit yours →</Link>
-                      </div>
+                    <div className="absolute top-full mt-1.5 left-0 right-0 rounded-xl liquid-glass border border-white/20 p-3 z-50 text-center text-[12px] text-white/60">
+                      No approved colleges found.{" "}
+                      <Link href="/" className="text-cyan-300 font-semibold no-underline">Submit yours →</Link>
                     </div>
                   )}
                 </div>
@@ -406,107 +388,111 @@ export default function ProfilePage() {
             </div>
 
             {saveError && (
-              <p className="dmsans" style={{ color: "#f87171", fontSize: "13px", marginTop: "16px" }}>
+              <p role="alert" className="text-rose-400 text-[12px] m-0">
                 {saveError}
               </p>
             )}
 
-            <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
-              <button className="save-btn" onClick={handleSave} disabled={saving}>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-bold text-[13px] shadow-[0_4px_14px_rgba(10,132,255,0.4)] disabled:opacity-50"
+              >
                 {saving ? "Saving..." : "Save Profile"}
               </button>
               <button
-                className="dmsans"
+                type="button"
                 onClick={() => { setEditing(false); setSaveError("") }}
-                style={{
-                  background: "none", border: "1px solid #1e1e1e", color: "#555",
-                  padding: "14px 20px", borderRadius: "2px", cursor: "pointer",
-                  fontSize: "12px", fontWeight: 600, whiteSpace: "nowrap",
-                }}
+                className="px-4 py-3 rounded-xl liquid-glass-pill text-white/70 hover:text-white text-[13px] font-semibold"
               >
                 Cancel
               </button>
             </div>
-          </div>
-
+          </form>
         ) : (
           /* ── VIEW MODE ── */
           <>
             {loading ? (
-              <div className="dmsans" style={{ padding: "40px 0", textAlign: "center", color: "#333", fontSize: "13px" }}>
-                Loading...
+              <div role="status" aria-live="polite" className="text-center py-10 text-cyan-300 font-semibold text-sm">
+                Loading profile details...
               </div>
             ) : (
-              <div style={{ background: "#0d0d0d", border: "1px solid #141414", borderRadius: "4px", padding: "24px" }}>
-
-                {/* Profile not set yet */}
+              <div className="rounded-[24px] liquid-glass p-5 flex flex-col gap-4 border border-white/15">
                 {!profile && (
-                  <div style={{ textAlign: "center", padding: "20px 0 28px" }}>
-                    <p className="playfair" style={{ fontSize: "18px", color: "#2a2a2a", fontStyle: "italic", marginBottom: "8px" }}>
-                      No profile set up yet.
-                    </p>
-                    <p className="dmsans" style={{ fontSize: "12px", color: "#444", marginBottom: "24px" }}>
-                      Add your course and graduation year so others know who's reviewing.
-                    </p>
+                  <div className="text-center py-3">
+                    <p className="text-[14px] text-white/80 font-semibold m-0">No profile details set up yet</p>
+                    <p className="text-[12px] text-white/50 mt-1 mb-0">Add your course and graduation year to enrich your reviews.</p>
                   </div>
                 )}
 
-                {/* Info rows */}
-                <div>
-                  <div className="info-row">
-                    <span className="tag">Display Name</span>
-                    <span className="dmsans" style={{ fontSize: "14px", color: profile?.displayName ? "#f0ede8" : "#333", textAlign: "right" }}>
+                <div className="flex flex-col divide-y divide-white/[0.08]">
+                  <div className="py-3 flex items-center justify-between gap-3 first:pt-0">
+                    <span className="text-[12px] uppercase font-bold text-white/50 tracking-wider">Display Name</span>
+                    <span className="text-[13px] font-bold text-white truncate">
                       {profile?.displayName || "Not set"}
                     </span>
                   </div>
-                  <div className="info-row">
-                    <span className="tag">Course</span>
-                    <span className="dmsans" style={{ fontSize: "14px", color: profile?.course ? "#f0ede8" : "#333", textAlign: "right", maxWidth: "60%" }}>
+
+                  <div className="py-3 flex items-center justify-between gap-3">
+                    <span className="text-[12px] uppercase font-bold text-white/50 tracking-wider">Course</span>
+                    <span className="text-[13px] font-bold text-white truncate max-w-[60%] text-right">
                       {profile?.course || "Not set"}
                     </span>
                   </div>
-                  <div className="info-row">
-                    <span className="tag">Graduation</span>
-                    <span className="dmsans" style={{ fontSize: "14px", color: profile?.graduationYear ? "#c8a96e" : "#333" }}>
+
+                  <div className="py-3 flex items-center justify-between gap-3">
+                    <span className="text-[12px] uppercase font-bold text-white/50 tracking-wider">Graduation</span>
+                    <span className="text-[13px] font-bold text-cyan-300">
                       {profile?.graduationYear ? `Class of ${profile.graduationYear}` : "Not set"}
                     </span>
                   </div>
-                  <div className="info-row">
-                    <span className="tag">College</span>
-                    <span className="dmsans" style={{ fontSize: "14px", color: profile?.college ? "#f0ede8" : "#333", textAlign: "right", maxWidth: "60%" }}>
-                      {profile?.college
-                        ? <Link href={`/colleges/${profile.collegeId}`} style={{ color: "#c8a96e", textDecoration: "none" }}>{profile.college.name} ↗</Link>
-                        : "Not set"
-                      }
+
+                  <div className="py-3 flex items-center justify-between gap-3">
+                    <span className="text-[12px] uppercase font-bold text-white/50 tracking-wider">College</span>
+                    <span className="text-[13px] font-bold text-white truncate max-w-[60%] text-right">
+                      {profile?.college ? (
+                        <Link href={`/colleges/${profile.collegeId}`} className="text-cyan-300 hover:text-white transition-colors no-underline">
+                          {profile.college.name} ↗
+                        </Link>
+                      ) : (
+                        "Not set"
+                      )}
                     </span>
                   </div>
-                  <div className="info-row">
-                    <span className="tag">Google Account</span>
-                    <span className="dmsans" style={{ fontSize: "13px", color: "#555" }}>
+
+                  <div className="py-3 flex items-center justify-between gap-3 last:pb-0">
+                    <span className="text-[12px] uppercase font-bold text-white/50 tracking-wider">Account</span>
+                    <span className="text-[12px] text-white/60 truncate">
                       {session.user?.email}
                     </span>
                   </div>
                 </div>
 
-                {/* Edit button */}
-                <div style={{ marginTop: "24px" }}>
-                  <button className="edit-btn" onClick={() => setEditing(true)}>
-                    {profile ? "Edit Profile" : "Set Up Profile"}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="w-full mt-2 py-3 rounded-xl liquid-glass-pill text-cyan-300 hover:text-white font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>
+                  <span>{profile ? "Edit Profile" : "Set Up Profile"}</span>
+                </button>
               </div>
             )}
 
-            {/* Privacy note */}
-            <div style={{ marginTop: "20px", padding: "16px", border: "1px solid #111", borderRadius: "4px" }}>
-              <p className="dmsans" style={{ fontSize: "11px", color: "#444", lineHeight: "1.6", margin: 0 }}>
-                <span style={{ color: "#555", fontWeight: 600 }}>Privacy: </span>
-                Your email is never shown publicly. Your display name and college are only used to personalise your experience — they are not attached to any reviews you write, which remain fully anonymous.
-              </p>
+            {/* Privacy Assurance Pod */}
+            <div className="rounded-2xl liquid-glass p-4 border border-white/10 flex items-start gap-3">
+              <span className="material-symbols-outlined text-cyan-400 text-[20px] shrink-0 mt-0.5" aria-hidden="true">
+                shield
+              </span>
+              <div className="text-[12px] leading-relaxed text-white/60">
+                <strong className="text-white font-semibold">Privacy Commitment: </strong>
+                Your personal email and identity are strictly safeguarded. Reviews and ratings you submit remain completely anonymous and are never tied to your student profile.
+              </div>
             </div>
           </>
         )}
-      </div>
+      </main>
     </div>
   )
 }

@@ -89,7 +89,7 @@ export default function PrivacyPage() {
         </Link>
       </nav>
 
-      <main style={{ maxWidth: "900px", margin: "0 auto", padding: "100px 40px" }}>
+      <main id="main-content" tabIndex={-1} className="outline-none" style={{ maxWidth: "900px", margin: "0 auto", padding: "100px 40px" }}>
         
         <header style={{ marginBottom: "100px", textAlign: "center" }}>
           <span className="legal-header">Digital Data Protection Directive</span>

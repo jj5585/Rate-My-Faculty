@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "next start"
+    "start": "next start",
+    "test:a11y": "NODE_OPTIONS=\"--experimental-require-module\" vitest run"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -27,14 +28,18 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "axe-core": "^4.13.0",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "jsdom": "^27.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }

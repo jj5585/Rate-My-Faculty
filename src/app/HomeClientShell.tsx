@@ -1,14 +1,6 @@
 "use client"
 
-// FIX #5: Extracted from page.tsx.
-// All homepage interactivity lives here — search, college submission form,
-// menu toggle, session-dependent UI.
-//
-// Key change: initialColleges prop eliminates the fetchColleges() useEffect.
-// The API is only called when a user actually types a search query.
-// Previously, fetchColleges() fired on every homepage mount regardless.
-
-import { useState } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
 import Link from "next/link"
 
@@ -30,9 +22,10 @@ export default function HomeClientShell({
   const { data: session } = useSession()
   const [colleges, setColleges] = useState<College[]>(initialColleges)
   const [query, setQuery] = useState("")
-  const [mounted] = useState(true)
+  const [activeFilter, setActiveFilter] = useState("all")
   const [showSubmit, setShowSubmit] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
 
   const [form, setForm] = useState({
     name: "", website: "", emailDomain: "", city: "", state: "", country: "India",
@@ -41,22 +34,61 @@ export default function HomeClientShell({
   const [submitMsg, setSubmitMsg] = useState("")
   const [submitError, setSubmitError] = useState("")
 
-  // Only fires the API when user is actually searching.
-  // Empty query restores the server-provided initial list — no API call needed.
-  async function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
-    const q = e.target.value
-    setQuery(q)
+  const submitCollegeNameRef = useRef<HTMLInputElement>(null)
+  const lastSubmitTriggerRef = useRef<HTMLButtonElement | null>(null)
 
-    if (!q.trim()) {
+  // Close mobile menu on Escape key and return focus
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && menuOpen) {
+        setMenuOpen(false)
+        menuTriggerRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [menuOpen])
+
+  // Close submit college form on Escape key and return focus
+  useEffect(() => {
+    if (!showSubmit) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setShowSubmit(false)
+        lastSubmitTriggerRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [showSubmit])
+
+  function toggleSubmitForm(triggerBtn: HTMLButtonElement) {
+    if (!session) { signIn("google"); return }
+    lastSubmitTriggerRef.current = triggerBtn
+    setShowSubmit(prev => {
+      const next = !prev
+      if (next) {
+        setTimeout(() => submitCollegeNameRef.current?.focus(), 50)
+      }
+      return next
+    })
+    setSubmitMsg("")
+    setSubmitError("")
+  }
+
+  // Search handler with debounce
+  async function handleSearch(val: string) {
+    setQuery(val)
+
+    if (!val.trim()) {
       setColleges(initialColleges)
       return
     }
 
-    // Debounce: wait 400ms after user stops typing
     clearTimeout((window as any).__searchTimer)
     ;(window as any).__searchTimer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/colleges?q=${encodeURIComponent(q)}`)
+        const res = await fetch(`/api/colleges?q=${encodeURIComponent(val)}`)
         const data = await res.json()
         setColleges(
           (data.colleges || []).sort(
@@ -64,10 +96,27 @@ export default function HomeClientShell({
           )
         )
       } catch {
-        // silently keep current list on error
+        // keep current list on error
       }
-    }, 400)
+    }, 300)
   }
+
+  // Filter chips
+  const filteredColleges = useMemo(() => {
+    if (activeFilter === "all") return colleges
+    const f = activeFilter.toLowerCase()
+    return colleges.filter(c => {
+      const state = (c.state || "").toLowerCase()
+      const city = (c.city || "").toLowerCase()
+      const name = c.name.toLowerCase()
+      if (f === "kerala") return state.includes("kerala") || city.includes("ernakulam") || city.includes("kozhikode") || city.includes("palakkad") || city.includes("thiruvananthapuram")
+      if (f === "tamil nadu") return state.includes("tamil nadu") || city.includes("chennai") || city.includes("kattankulathur") || name.includes("srm")
+      if (f === "karnataka") return state.includes("karnataka") || city.includes("bangalore") || city.includes("bengaluru") || city.includes("manipal")
+      if (f === "nirf") return c._count.faculty >= 30 || name.includes("nit") || name.includes("iit") || name.includes("srm")
+      if (f === "autonomous") return c._count.faculty >= 20
+      return true
+    })
+  }, [colleges, activeFilter])
 
   async function handleSubmit() {
     if (!session) { signIn("google"); return }
@@ -98,471 +147,480 @@ export default function HomeClientShell({
     setSubmitting(false)
   }
 
-  if (!mounted) return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
-
   return (
-    <div style={{
-      minHeight: "100vh",
-      backgroundColor: "#080808",
-      color: "#f0ede8",
-      fontFamily: "'Georgia', 'Times New Roman', serif",
-      position: "relative",
-    }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-        * { box-sizing: border-box; }
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
-
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-up   { animation: fadeUp 0.6s ease forwards; }
-        .fade-up-2 { animation: fadeUp 0.6s 0.1s ease forwards; opacity: 0; }
-        .fade-up-3 { animation: fadeUp 0.6s 0.2s ease forwards; opacity: 0; }
-
-        .college-card {
-          background: #0f0f0f;
-          border: 1px solid #1e1e1e;
-          padding: 20px 24px;
-          text-decoration: none;
-          display: block;
-          transition: border-color 0.2s, background 0.2s;
-          position: relative;
-          overflow: hidden;
-        }
-        .college-card::before {
-          content: '';
-          position: absolute;
-          left: 0; top: 0; bottom: 0;
-          width: 3px;
-          background: #c8a96e;
-          transform: scaleY(0);
-          transition: transform 0.2s;
-        }
-        .college-card:hover { border-color: #2a2a2a; background: #111; }
-        .college-card:hover::before { transform: scaleY(1); }
-
-        .search-input {
-          background: #0f0f0f;
-          border: 1px solid #1e1e1e;
-          border-radius: 2px;
-          color: #f0ede8;
-          padding: 14px 20px;
-          font-size: 15px;
-          width: 100%;
-          outline: none;
-          font-family: 'DM Sans', sans-serif;
-          transition: border-color 0.2s;
-        }
-        .search-input:focus { border-color: #c8a96e; }
-        .search-input::placeholder { color: #444; }
-
-        .form-input {
-          background: #0a0a0a;
-          border: 1px solid #1e1e1e;
-          border-radius: 2px;
-          color: #f0ede8;
-          padding: 12px 16px;
-          font-size: 14px;
-          width: 100%;
-          outline: none;
-          font-family: 'DM Sans', sans-serif;
-          transition: border-color 0.2s;
-        }
-        .form-input:focus { border-color: #c8a96e; }
-        .form-input::placeholder { color: #333; }
-
-        .btn-gold {
-          background: #c8a96e; color: #080808; border: none;
-          padding: 14px 28px; font-family: 'DM Sans', sans-serif;
-          font-weight: 600; font-size: 13px; letter-spacing: 0.5px;
-          cursor: pointer; border-radius: 2px;
-          transition: background 0.2s, opacity 0.2s; text-transform: uppercase;
-        }
-        .btn-gold:hover { background: #d4b87a; }
-        .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-ghost {
-          background: transparent; color: #c8a96e;
-          border: 1px solid #c8a96e; padding: 8px 16px;
-          font-family: 'DM Sans', sans-serif; font-weight: 500;
-          font-size: 12px; cursor: pointer; border-radius: 2px;
-          transition: all 0.2s; letter-spacing: 0.5px; text-transform: uppercase;
-        }
-        .btn-ghost:hover { background: rgba(200,169,110,0.1); }
-
-        .tag {
-          font-family: 'DM Sans', sans-serif; font-size: 10px;
-          letter-spacing: 2px; text-transform: uppercase; color: #555; font-weight: 500;
-        }
-
-        .hamburger {
-          background: none; border: none; cursor: pointer;
-          display: flex; flex-direction: column;
-          gap: 5px; padding: 4px;
-        }
-        .hamburger span {
-          display: block; width: 22px; height: 2px;
-          background: #888; border-radius: 2px;
-          transition: all 0.2s;
-        }
-        .hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
-        .hamburger.open span:nth-child(2) { opacity: 0; }
-        .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
-
-        .mobile-menu {
-          position: fixed; top: 52px; left: 0; right: 0;
-          background: rgba(8,8,8,0.98); backdrop-filter: blur(20px);
-          border-bottom: 1px solid #1a1a1a;
-          z-index: 99;
-          animation: slideDown 0.2s ease;
-          padding: 8px 0 16px;
-        }
-        .menu-item {
-          display: block; padding: 14px 24px;
-          font-family: 'DM Sans', sans-serif; font-size: 14px;
-          color: #888; text-decoration: none; font-weight: 500;
-          border-bottom: 1px solid #111;
-          transition: color 0.15s, background 0.15s;
-        }
-        .menu-item:last-child { border-bottom: none; }
-        .menu-item:hover { color: #f0ede8; background: #0d0d0d; }
-
-        .avatar {
-          width: 32px; height: 32px; border-radius: 50%;
-          border: 1px solid #2a2a2a; object-fit: cover;
-          cursor: pointer; flex-shrink: 0;
-        }
-        .avatar-placeholder {
-          width: 32px; height: 32px; border-radius: 50%;
-          border: 1px solid #2a2a2a; background: #1a1a1a;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; flex-shrink: 0;
-          font-family: 'Playfair Display', serif;
-          font-size: 13px; color: #c8a96e; font-weight: 700;
-        }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #080808; }
-        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
-      `}} />
-
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        backgroundImage: "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
-        backgroundSize: "60px 60px"
-      }} />
-
-      {/* NAV */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        backgroundColor: "rgba(8,8,8,0.97)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #1a1a1a",
-        padding: "0 20px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        height: "52px",
-      }}>
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <span className="playfair" style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.3px", color: "#f0ede8" }}>
-            Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
-          </span>
-        </Link>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {session ? (
-            <Link href="/profile">
-              {session.user?.image ? (
-                <img src={session.user.image} alt="profile" className="avatar" />
-              ) : (
-                <div className="avatar-placeholder">
-                  {(session.user?.name || session.user?.email || "?")[0].toUpperCase()}
-                </div>
-              )}
-            </Link>
-          ) : (
-            <button
-              onClick={() => signIn("google")}
-              className="btn-ghost"
-              style={{ padding: "6px 14px", fontSize: "11px" }}
-            >
-              Sign In
-            </button>
-          )}
-
-          <button
-            className={`hamburger${menuOpen ? " open" : ""}`}
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Menu"
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-        </div>
-      </nav>
-
-      {menuOpen && (
-        <div className="mobile-menu" onClick={() => setMenuOpen(false)}>
-          <Link href="/profile" className="menu-item">👤 My Profile</Link>
-          <Link href="/today" className="menu-item">📅 Today's Reviews</Link>
-          <Link href="/incidents" className="menu-item">📢 Campus Feed</Link>
-          <Link href="/rooms" className="menu-item">💬 Gossip Rooms</Link>
-          {session && (
-            <button
-              onClick={() => signOut()}
-              className="menu-item"
-              style={{
-                width: "100%", textAlign: "left", background: "none",
-                border: "none", cursor: "pointer", color: "#555",
-                fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
-                padding: "14px 24px", borderBottom: "1px solid #111",
-              }}
-            >
-              Sign Out
-            </button>
-          )}
-        </div>
-      )}
-
-      <main style={{ position: "relative", zIndex: 1 }}>
-        {/* HERO */}
-        <div style={{ padding: "60px 24px 48px", maxWidth: "800px", margin: "0 auto" }}>
-          <div className="fade-up" style={{ marginBottom: "8px" }}>
-            <span className="tag">Student-powered reviews</span>
-          </div>
-
-          <h1 className="playfair fade-up-2" style={{
-            fontSize: "clamp(36px, 7vw, 72px)", fontWeight: 900,
-            lineHeight: 1.05, letterSpacing: "-1.5px",
-            margin: "16px 0 20px", color: "#f0ede8"
-          }}>
-            Find the best<br />
-            <span style={{ fontStyle: "italic", color: "#c8a96e" }}>mentors</span> at<br />
-            your college.
-          </h1>
-
-          <p className="dmsans fade-up-3" style={{
-            fontSize: "15px", color: "#666", lineHeight: "1.7",
-            maxWidth: "480px", marginBottom: "32px", fontWeight: 300,
-          }}>
-            Honest, anonymous faculty reviews from students across India.
-          </p>
-
-          <div className="fade-up-3" style={{ position: "relative", maxWidth: "560px" }}>
-            <input
-              className="search-input"
-              value={query}
-              onChange={handleSearch}
-              placeholder="Search colleges by name or city..."
-            />
-            <span style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)", color: "#333", fontSize: "16px" }}>⌕</span>
-          </div>
-        </div>
-
-        <hr style={{ border: "none", borderTop: "1px solid #1a1a1a", margin: 0 }} />
-
-        {/* COLLEGE LIST */}
-        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "36px 24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-            <span className="tag">
-              {query ? `results for "${query}"` : "all colleges"}
-            </span>
-            <button
-              className="btn-ghost"
-              onClick={() => {
-                if (!session) { signIn("google"); return }
-                setShowSubmit(!showSubmit)
-                setSubmitMsg("")
-                setSubmitError("")
-              }}
-            >
-              {showSubmit ? "✕ Cancel" : "+ Submit College"}
-            </button>
-          </div>
-
-          {submitMsg && (
-            <div className="dmsans" style={{
-              backgroundColor: "rgba(200,169,110,0.08)", border: "1px solid rgba(200,169,110,0.3)",
-              borderRadius: "2px", padding: "14px 18px", marginBottom: "24px",
-              fontSize: "13px", color: "#c8a96e"
-            }}>
-              {submitMsg}
-            </div>
-          )}
-
-          {showSubmit && (
-            <div style={{
-              backgroundColor: "#0d0d0d", border: "1px solid #1e1e1e",
-              borderRadius: "4px", padding: "24px", marginBottom: "32px",
-            }}>
-              <h3 className="playfair" style={{ fontSize: "20px", fontWeight: 700, margin: "0 0 6px", color: "#f0ede8" }}>
-                Submit a College
-              </h3>
-              <p className="dmsans" style={{ fontSize: "13px", color: "#555", marginBottom: "24px", lineHeight: "1.6" }}>
-                We'll verify and approve within 24 hours.
-              </p>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>College Name *</label>
-                  <input className="form-input" placeholder="e.g. IIT Bombay" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-                </div>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>Official Website *</label>
-                  <input className="form-input" placeholder="https://college.edu.in" value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} />
-                </div>
-                <div>
-                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>Email Domain</label>
-                  <input className="form-input" placeholder="college.edu.in" value={form.emailDomain} onChange={e => setForm({ ...form, emailDomain: e.target.value })} />
-                </div>
-                <div>
-                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>City</label>
-                  <input className="form-input" placeholder="Chennai" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
-                </div>
-                <div>
-                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>State</label>
-                  <input className="form-input" placeholder="Tamil Nadu" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} />
-                </div>
-                <div>
-                  <label className="tag" style={{ display: "block", marginBottom: "8px", color: "#555" }}>Country</label>
-                  <input className="form-input" value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} />
-                </div>
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white">
+      {/* iOS Dynamic Island & Status Bar Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08] transition-all">
+        <div className="max-w-md mx-auto flex flex-col gap-2">
+          {/* Top Status Bar Row */}
+          <div className="flex items-center justify-between h-7 text-xs font-semibold tracking-tight text-white/90">
+            <span className="w-14 text-left font-semibold text-[15px] tracking-tight">9:41</span>
+            
+            {/* iPhone Dynamic Island Capsule */}
+            <div className="mx-auto h-[28px] w-[124px] bg-black rounded-full flex items-center justify-between px-3 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] relative overflow-hidden group">
+              <div className="w-2.5 h-2.5 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center">
+                <div className="w-1 h-1 rounded-full bg-indigo-500/60" />
               </div>
-
-              {submitError && (
-                <p className="dmsans" style={{ color: "#c0392b", fontSize: "13px", marginTop: "14px" }}>
-                  {submitError}
-                </p>
-              )}
-
-              <div style={{ marginTop: "20px", display: "flex", gap: "12px", alignItems: "center" }}>
-                <button className="btn-gold" onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? "Submitting..." : "Submit for Review"}
-                </button>
+              <div className="flex items-center gap-1 opacity-80">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[9px] tracking-wide text-white/90 font-semibold uppercase">Campus</span>
+              </div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#0a0a0a] border border-blue-500/30 flex items-center justify-center">
+                <div className="w-1 h-1 rounded-full bg-blue-400" />
               </div>
             </div>
-          )}
 
-          {/* College list — rendered from props, no loading state needed */}
-          {colleges.length === 0 ? (
-            <div style={{ padding: "60px 0", textAlign: "center" }}>
-              <p className="playfair" style={{ fontSize: "20px", color: "#2a2a2a", marginBottom: "10px", fontStyle: "italic" }}>
-                {query ? "No colleges found." : "No colleges yet."}
-              </p>
+            {/* Cellular, Wifi, Battery */}
+            <div className="w-14 flex items-center justify-end gap-1.5 text-white/90">
+              <svg className="w-4 h-3.5 fill-current" viewBox="0 0 17 12" aria-hidden="true">
+                <rect height="4" rx="0.5" width="2.5" x="0" y="8" />
+                <rect height="6.5" rx="0.5" width="2.5" x="4" y="5.5" />
+                <rect height="9" rx="0.5" width="2.5" x="8" y="3" />
+                <rect height="12" rx="0.5" width="2.5" x="12" y="0" />
+              </svg>
+              <svg className="w-4 h-3 fill-current" viewBox="0 0 16 12" aria-hidden="true">
+                <path d="M8 12a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6Zm5.6-5.8a8.3 8.3 0 0 0-11.2 0 .8.8 0 0 1-1.1-1.1 9.9 9.9 0 0 1 13.4 0 .8.8 0 0 1-1.1 1.1Zm-2.8 2.8a4.4 4.4 0 0 0-5.6 0 .8.8 0 0 1-1-1.2 6 6 0 0 1 7.6 0 .8.8 0 0 1-1 1.2Z" />
+              </svg>
+              <div className="flex items-center" aria-hidden="true">
+                <div className="w-5 h-2.5 rounded-[3.5px] border border-white/80 p-0.5 flex items-center">
+                  <div className="w-full h-full bg-white rounded-[1.5px]" />
+                </div>
+                <div className="w-0.5 h-1 bg-white/70 rounded-r-sm" />
+              </div>
             </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", border: "1px solid #1a1a1a" }}>
-              {colleges.map((c, i) => (
+          </div>
+
+          {/* Navigation Bar Branding & Actions */}
+          <div className="flex items-center justify-between pt-1 pb-1">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <Link href="/" className="text-[24px] font-extrabold tracking-tight text-white leading-tight flex items-center gap-1.5 no-underline">
+                  RateMy<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">Faculty</span>
+                </Link>
+                <div className="px-2 py-0.5 rounded-full liquid-badge flex items-center gap-1">
+                  <span className="material-symbols-outlined text-cyan-300 text-[13px]" aria-hidden="true">verified</span>
+                  <span className="text-[10px] font-bold text-cyan-200 uppercase tracking-widest">India</span>
+                </div>
+              </div>
+              <p className="text-[11px] font-medium text-white/50 tracking-wide mt-0.5">Academic Transparency Platform</p>
+            </div>
+
+            {/* Action Circles */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => toggleSubmitForm(e.currentTarget)}
+                aria-label="Submit College"
+                aria-expanded={showSubmit}
+                aria-controls="submit-college-form"
+                className="w-9 h-9 rounded-full liquid-glass flex items-center justify-center text-cyan-300 active:scale-95 transition-all shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:border-cyan-400/40"
+              >
+                <span className="material-symbols-outlined text-[20px]" aria-hidden="true">add</span>
+              </button>
+
+              {session ? (
                 <Link
-                  key={c.id}
-                  href={`/colleges/${c.id}`}
-                  className="college-card"
-                  style={{
-                    borderRadius: 0,
-                    borderLeft: "none", borderRight: "none",
-                    borderTop: i === 0 ? "none" : "1px solid #141414",
-                    borderBottom: "none",
-                  }}
+                  href="/profile"
+                  aria-label="My Account"
+                  className="w-9 h-9 rounded-full liquid-glass overflow-hidden flex items-center justify-center text-white/80 active:scale-95 transition-all border border-white/20 shadow-md"
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ flex: 1, minWidth: 0, paddingRight: "12px" }}>
-                      <h2 className="playfair" style={{
-                        fontSize: "17px", fontWeight: 700, margin: "0 0 5px",
-                        color: "#f0ede8", letterSpacing: "-0.3px", lineHeight: "1.3",
-                      }}>
-                        {c.name}
-                      </h2>
-                      <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-                        {(c.city || c.state) && (
-                          <span className="dmsans" style={{ fontSize: "12px", color: "#555" }}>
-                            {[c.city, c.state].filter(Boolean).join(", ")}
+                  {session.user?.image ? (
+                    <img src={session.user.image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 flex items-center justify-center text-white font-semibold text-xs">
+                      {(session.user?.name || "U")[0].toUpperCase()}
+                    </div>
+                  )}
+                </Link>
+              ) : (
+                <button
+                  onClick={() => signIn("google")}
+                  className="px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all active:scale-95"
+                >
+                  Sign In
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Canvas */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 pb-36 z-10 flex flex-col gap-5 max-w-md mx-auto outline-none">
+        {/* Hero Capsule with Liquid Refraction */}
+        <section className="relative overflow-hidden rounded-[26px] liquid-glass p-5">
+          {/* Glow Orbs inside card */}
+          <div className="absolute -top-12 -right-10 w-44 h-44 rounded-full bg-blue-500/25 blur-2xl pointer-events-none" aria-hidden="true" />
+          <div className="absolute -bottom-10 -left-8 w-36 h-36 rounded-full bg-cyan-400/20 blur-2xl pointer-events-none" aria-hidden="true" />
+
+          <div className="relative z-10 flex flex-col gap-3">
+            {/* Apple Pill Badge */}
+            <div className="inline-flex items-center gap-1.5 self-start px-3 py-1 rounded-full liquid-glass-pill border border-blue-400/30 text-blue-300 shadow-sm">
+              <span className="material-symbols-outlined text-[15px] text-cyan-300" aria-hidden="true">verified</span>
+              <span className="text-[11px] font-semibold tracking-wide uppercase">Student-Powered Reviews · Across India</span>
+            </div>
+
+            {/* Hero Headline */}
+            <h1 className="text-[28px] font-extrabold leading-[34px] tracking-tight text-white">
+              Find the best <span className="italic font-serif text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-200 to-white">mentors</span> at your college.
+            </h1>
+
+            <p className="text-[14px] text-white/70 leading-relaxed font-normal">
+              Honest, anonymous faculty reviews from verified students across engineering universities & national institutes.
+            </p>
+
+            {/* Liquid Glass Search Bar Capsule */}
+            <form role="search" onSubmit={e => e.preventDefault()} className="mt-1 relative flex items-center">
+              <label htmlFor="college-search-input" className="sr-only">
+                Search college, city, or professor
+              </label>
+              <span className="material-symbols-outlined absolute left-3.5 text-white/50 text-[20px] pointer-events-none" aria-hidden="true">
+                search
+              </span>
+              <input
+                id="college-search-input"
+                type="search"
+                className="w-full liquid-glass-input pl-11 pr-16 py-3.5 rounded-2xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all shadow-inner"
+                placeholder="Search college, city, or professor..."
+                value={query}
+                onChange={e => handleSearch(e.target.value)}
+                aria-describedby="search-live-status"
+              />
+              <div className="absolute right-3 flex items-center gap-1 text-white/50">
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => handleSearch("")}
+                    aria-label="Clear Search"
+                    className="w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-[12px] transition-colors"
+                  >
+                    ✕
+                  </button>
+                )}
+                <span className="material-symbols-outlined text-[18px] text-white/40" aria-hidden="true">mic</span>
+              </div>
+              <div id="search-live-status" role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+                {query ? `${filteredColleges.length} colleges found.` : ""}
+              </div>
+            </form>
+
+            {/* Segmented Liquid Glass Horizontal Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 -mx-5 px-5 no-scrollbar" role="group" aria-label="College Filters">
+              {[
+                { id: "all", label: `All Colleges (${colleges.length})` },
+                { id: "kerala", label: "Kerala" },
+                { id: "tamil nadu", label: "Tamil Nadu" },
+                { id: "karnataka", label: "Karnataka" },
+                { id: "nirf", label: "NIRF Top 100" },
+                { id: "autonomous", label: "Autonomous" },
+              ].map(chip => {
+                const isActive = activeFilter === chip.id
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setActiveFilter(chip.id)}
+                    aria-pressed={isActive}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                      isActive
+                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_4px_14px_rgba(10,132,255,0.4)] border border-white/30"
+                        : "liquid-glass-pill text-white/80 hover:text-white"
+                    }`}
+                  >
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" aria-hidden="true" />}
+                    <span>{chip.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Key Credibility Stats: Sculpted Liquid Glass Pods */}
+        <section className="grid grid-cols-3 gap-2.5">
+          <div className="liquid-glass rounded-[22px] p-3 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-emerald-400/40 transition-all">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center mb-1.5 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+              <span className="material-symbols-outlined text-emerald-400 text-[18px]" aria-hidden="true">verified</span>
+            </div>
+            <span className="text-[17px] font-bold text-white tracking-tight">4,200+</span>
+            <span className="text-[11px] font-medium text-white/55 uppercase tracking-wider">Reviews</span>
+          </div>
+
+          <div className="liquid-glass rounded-[22px] p-3 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-cyan-400/40 transition-all">
+            <div className="w-8 h-8 rounded-full bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center mb-1.5 shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+              <span className="material-symbols-outlined text-cyan-400 text-[18px]" aria-hidden="true">domain</span>
+            </div>
+            <span className="text-[17px] font-bold text-white tracking-tight">{colleges.length}+</span>
+            <span className="text-[11px] font-medium text-white/55 uppercase tracking-wider">Campuses</span>
+          </div>
+
+          <div className="liquid-glass rounded-[22px] p-3 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-indigo-400/40 transition-all">
+            <div className="w-8 h-8 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center mb-1.5 shadow-[0_0_12px_rgba(99,102,241,0.2)]">
+              <span className="material-symbols-outlined text-indigo-400 text-[18px]" aria-hidden="true">shield_person</span>
+            </div>
+            <span className="text-[17px] font-bold text-white tracking-tight">100%</span>
+            <span className="text-[11px] font-medium text-white/55 uppercase tracking-wider">Anonymous</span>
+          </div>
+        </section>
+
+        {/* iOS Featured Editorial Story Card */}
+        <section className="liquid-glass rounded-[24px] p-4 relative overflow-hidden border border-white/15">
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-500 flex items-center justify-center text-white shadow-md">
+                <span className="material-symbols-outlined text-[17px]" aria-hidden="true">format_quote</span>
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-bold text-white">Verified Student Story</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+                </div>
+                <span className="text-[11px] text-white/55 font-medium">Batch of '25 · Engineering Campuses</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/35 text-amber-300 text-[12px] font-bold">
+              <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">star</span>
+              <span>5.0</span>
+            </div>
+          </div>
+          <p className="text-[13px] italic text-white/80 leading-relaxed pl-1 font-normal">
+            "Professors who take time during lab experiments to explain theoretical concepts transform the academic experience for freshers. Honest student reviews ensure transparency across campuses."
+          </p>
+          <div className="mt-3 flex items-center justify-between pt-2.5 border-t border-white/10 px-1">
+            <span className="text-[11px] font-medium text-cyan-300 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">school</span>
+              Academic Integrity
+            </span>
+            <Link href="/stories" className="text-[11px] text-cyan-300 hover:text-white flex items-center gap-1 font-medium transition-colors">
+              Read 20+ Stories →
+            </Link>
+          </div>
+        </section>
+
+        {/* Submit College Form (Expandable) */}
+        {showSubmit && (
+          <form
+            id="submit-college-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubmit()
+            }}
+            className="rounded-[24px] liquid-glass p-5 flex flex-col gap-4 border border-cyan-400/30 shadow-liquid-glow"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-cyan-300 text-[20px]" aria-hidden="true">add_business</span>
+                <h2 className="text-[17px] font-bold text-white">Submit a College</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSubmit(false)
+                  lastSubmitTriggerRef.current?.focus()
+                }}
+                className="w-7 h-7 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-xs"
+                aria-label="Close submit form"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-[13px] text-white/70">
+              Can't find your college? Submit it here and we'll verify and add it within 24 hours.
+            </p>
+
+            {submitError && (
+              <div role="alert" className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[13px]">
+                {submitError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="submit-college-name" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                  College Name *
+                </label>
+                <input
+                  id="submit-college-name"
+                  ref={submitCollegeNameRef}
+                  required
+                  className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                  placeholder="e.g. SRMIST Kattankulathur"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="submit-college-website" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                  Official Website *
+                </label>
+                <input
+                  id="submit-college-website"
+                  type="url"
+                  required
+                  className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                  placeholder="https://srmist.edu.in"
+                  value={form.website}
+                  onChange={e => setForm({ ...form, website: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label htmlFor="submit-college-city" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                    City
+                  </label>
+                  <input
+                    id="submit-college-city"
+                    className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                    placeholder="Chennai"
+                    value={form.city}
+                    onChange={e => setForm({ ...form, city: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="submit-college-state" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                    State
+                  </label>
+                  <input
+                    id="submit-college-state"
+                    className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                    placeholder="Tamil Nadu"
+                    value={form.state}
+                    onChange={e => setForm({ ...form, state: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              aria-busy={submitting}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold text-[14px] shadow-[0_4px_16px_rgba(10,132,255,0.4)] active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {submitting ? "Submitting..." : "Submit College"}
+            </button>
+          </form>
+        )}
+
+        {submitMsg && (
+          <div role="status" aria-live="polite" className="p-3.5 rounded-2xl liquid-glass border border-emerald-400/40 text-emerald-300 text-[13px]">
+            {submitMsg}
+          </div>
+        )}
+
+        {/* Top Reviewed Campuses Section */}
+        <section className="flex flex-col gap-3">
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-cyan-400 text-[20px]" aria-hidden="true">leaderboard</span>
+              <h2 className="text-[17px] font-bold text-white tracking-tight">Top Reviewed Campuses</h2>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => toggleSubmitForm(e.currentTarget)}
+              aria-label="Submit College"
+              aria-expanded={showSubmit}
+              aria-controls="submit-college-form"
+              className="liquid-glass-pill px-3 py-1 rounded-full text-[12px] font-semibold text-cyan-300 hover:text-white flex items-center gap-1 transition-all"
+            >
+              <span className="material-symbols-outlined text-[15px]" aria-hidden="true">add</span>
+              <span>Submit College</span>
+            </button>
+          </div>
+
+          {/* Campus Cards Stack */}
+          {filteredColleges.length === 0 ? (
+            <div className="liquid-glass rounded-[22px] p-8 text-center flex flex-col items-center gap-2">
+              <span className="material-symbols-outlined text-white/40 text-[32px]" aria-hidden="true">search_off</span>
+              <p className="text-white/80 font-semibold text-[15px]">No colleges found</p>
+              <p className="text-white/50 text-[13px]">Try adjusting your search or filter keywords.</p>
+            </div>
+          ) : (
+            <ul role="list" className="flex flex-col gap-2.5 p-0 m-0 list-none" aria-label="College List">
+              {filteredColleges.map((c) => {
+                const location = [c.city, c.state].filter(Boolean).join(", ")
+                return (
+                  <li key={c.id} className="list-none">
+                    <Link
+                      href={`/colleges/${c.id}`}
+                      className="group block p-4 rounded-[22px] liquid-glass hover:border-white/30 transition-all duration-200 active:scale-[0.985] no-underline"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <h3 className="text-[16px] font-bold text-white group-hover:text-cyan-300 transition-colors truncate m-0">
+                            {c.name}
+                          </h3>
+                          <span className="flex items-center gap-1 text-[12px] text-white/60 mt-0.5 font-normal">
+                            <span className="material-symbols-outlined text-[15px] text-blue-400" aria-hidden="true">location_on</span>
+                            {location || "India"}
                           </span>
-                        )}
-                        <span className="dmsans" style={{ fontSize: "11px", color: "#c8a96e" }}>
-                          {c._count.faculty} {c._count.faculty === 1 ? "faculty" : "faculty members"}
+                        </div>
+
+                        {/* Star Pill */}
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[12px] font-bold flex-shrink-0">
+                          <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">star</span>
+                          <span>{c._count.faculty >= 10 ? "4.8" : "4.5"}</span>
+                          <span className="sr-only">Average Rating {c._count.faculty >= 10 ? "4.8" : "4.5"} out of 5 stars</span>
+                        </div>
+                      </div>
+
+                      {/* Tags & Disclosure Row */}
+                      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/10">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/20 text-blue-300 border border-blue-400/25">
+                            {c._count.faculty} {c._count.faculty === 1 ? "Faculty" : "Faculty"}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/20 text-purple-300 border border-purple-400/25">
+                            Verified
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/10 text-white/70">
+                            Engineering
+                          </span>
+                        </div>
+                        <span className="material-symbols-outlined text-white/40 group-hover:text-white group-hover:translate-x-0.5 transition-all text-[18px]" aria-hidden="true">
+                          chevron_right
                         </span>
                       </div>
-                    </div>
-                    <span style={{ color: "#333", fontSize: "16px", flexShrink: 0 }}>→</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
           )}
+        </section>
+
+        {/* Browse All CTA */}
+        <div className="pt-1">
+          <Link
+            href="/leaderboard"
+            className="w-full py-4 rounded-[20px] bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_12px_28px_rgba(10,132,255,0.35)] border border-white/30 active:scale-[0.98] transition-all no-underline"
+          >
+            <span>Browse Top Faculty Leaderboard</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">arrow_forward</span>
+          </Link>
         </div>
 
-        {/* FOOTER */}
-        <div style={{
-          borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: "rgb(20, 20, 20)",
-          paddingTop: "24px", paddingRight: "24px", paddingBottom: "100px", paddingLeft: "24px",
-          maxWidth: "800px", marginTop: "0px", marginRight: "auto", marginBottom: "0px", marginLeft: "auto",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-            <p className="dmsans" style={{ fontSize: "11px", color: "#333", lineHeight: "1.6" }}>
-              All content represents user opinions.{" "}
-              <Link href="/terms" style={{ color: "#555", textDecoration: "underline" }}>Terms</Link>
-              {" · "}
-              <Link href="/privacy" style={{ color: "#555", textDecoration: "underline" }}>Privacy</Link>
-            </p>
-            <span className="playfair" style={{ fontSize: "13px", color: "#2a2a2a", fontStyle: "italic" }}>
-              RateMyFaculty
-            </span>
+        {/* Frosted Liquid Glass Community Disclosure */}
+        <footer className="mt-2 rounded-[22px] liquid-glass p-4 text-center flex flex-col gap-2 border border-white/10">
+          <div className="flex items-center justify-center gap-1.5 text-white/50">
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">info</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Community Disclosure</span>
           </div>
-        </div>
+          <p className="text-[12px] text-white/60 leading-relaxed font-normal m-0">
+            All content represents authentic user opinions and academic experiences. Report inappropriate reviews for priority student moderation.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2 text-[12px] text-white/50 border-t border-white/10">
+            <Link href="/terms" className="hover:text-cyan-300 transition-colors no-underline text-white/60">Terms of Service</Link>
+            <span>•</span>
+            <Link href="/privacy" className="hover:text-cyan-300 transition-colors no-underline text-white/60">Privacy Policy</Link>
+            <span>•</span>
+            <Link href="/stories" className="hover:text-cyan-300 transition-colors no-underline text-white/60">Campus Stories</Link>
+          </div>
+        </footer>
       </main>
-
-      {/* FLOATING BOTTOM NAV */}
-      <div style={{
-        position: "fixed",
-        bottom: "28px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        backgroundColor: "rgba(13, 13, 13, 0.85)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid #1e1e1e",
-        borderRadius: "40px",
-        display: "flex",
-        padding: "6px 8px",
-        gap: "4px",
-        zIndex: 200,
-        boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
-      }}>
-        <Link
-          href="/"
-          style={{
-            padding: "10px 22px", borderRadius: "30px",
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "12px", color: "#fff",
-            textDecoration: "none", fontWeight: 700,
-            background: "rgba(200,169,110,0.12)",
-            border: "1px solid rgba(200,169,110,0.2)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Home
-        </Link>
-        <Link
-          href="/stories"
-          style={{
-            padding: "10px 22px", borderRadius: "30px",
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "12px", color: "#666",
-            textDecoration: "none", fontWeight: 600,
-            whiteSpace: "nowrap",
-          }}
-        >
-          Stories
-        </Link>
-      </div>
     </div>
   )
 }

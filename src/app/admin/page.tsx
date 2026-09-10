@@ -148,12 +148,10 @@ export default function AdminPage() {
       })
       if (res.ok) {
         if (action === "clear_comment") {
-          // Update locally — null out the review text, keep rating
           setReports(prev => prev.map(r =>
             r.id === id ? { ...r, review: null, _count: { reports: 0 } } : r
           ).filter(r => r._count.reports > 0 || r.id !== id))
         } else {
-          // Dismiss — remove from list
           setReports(prev => prev.filter(r => r.id !== id))
         }
       }
@@ -176,159 +174,110 @@ export default function AdminPage() {
   // ── Auth gates ─────────────────────────────────────
   if (status === "loading" || checkingAdmin) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#333", fontSize: "13px" }}>Verifying access...</p>
+      <div className="min-h-screen flex items-center justify-center text-cyan-300 font-semibold text-sm">
+        Verifying moderation credentials...
       </div>
     )
   }
 
   if (!session) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "24px", color: "#f0ede8", marginBottom: "20px", fontStyle: "italic" }}>Admin Access Required</p>
-          <button onClick={() => signIn("google")} style={{ background: "#c8a96e", color: "#080808", border: "none", padding: "12px 24px", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: "13px", cursor: "pointer", borderRadius: "2px" }}>Sign In</button>
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center p-6 relative z-10 pb-36 outline-none">
+        <div className="w-full max-w-sm rounded-[28px] liquid-glass p-8 text-center flex flex-col items-center gap-4 border border-white/15">
+          <span className="material-symbols-outlined text-[36px] text-amber-400" aria-hidden="true">lock</span>
+          <h1 className="text-[20px] font-extrabold text-white m-0">Admin Access Required</h1>
+          <p className="text-[13px] text-white/60 m-0">Sign in with an authorized administrative account to access this terminal.</p>
+          <button
+            type="button"
+            onClick={() => signIn("google")}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-bold text-[14px]"
+          >
+            Sign In
+          </button>
         </div>
-      </div>
+      </main>
     )
   }
 
   if (!isAdmin) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "24px", color: "#f0ede8", marginBottom: "8px" }}>403</p>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#555" }}>You don't have admin access.</p>
-          <Link href="/" style={{ color: "#c8a96e", fontSize: "12px", fontFamily: "'DM Sans', sans-serif" }}>← Back Home</Link>
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center p-6 relative z-10 pb-36 outline-none">
+        <div className="w-full max-w-sm rounded-[28px] liquid-glass p-8 text-center flex flex-col items-center gap-3 border border-rose-500/30">
+          <span className="material-symbols-outlined text-[36px] text-rose-400" aria-hidden="true">gpp_bad</span>
+          <h1 className="text-[22px] font-black text-rose-400 m-0">403 Forbidden</h1>
+          <p className="text-[13px] text-white/60 m-0">You don't have administrative moderation clearance.</p>
+          <Link href="/" className="mt-2 text-[12px] text-cyan-300 hover:text-white font-bold no-underline">
+            ← Return to Campus Home
+          </Link>
         </div>
-      </div>
+      </main>
     )
   }
 
-  // ── Render ─────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8" }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900&family=DM+Sans:wght@400;500;600&display=swap');
-        * { box-sizing: border-box; }
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
-        .tag { font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; }
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white pb-36">
+      {/* Top Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-xl mx-auto flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all no-underline"
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+            <span>Site</span>
+          </Link>
 
-        .card {
-          border: 1px solid #141414;
-          border-radius: 4px;
-          padding: 20px;
-          background: #0d0d0d;
-          transition: border-color 0.2s;
-        }
-        .card:hover { border-color: #1e1e1e; }
-
-        .section-tab {
-          background: none; border: none;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13px; font-weight: 600;
-          color: #444; cursor: pointer;
-          padding: 16px 0;
-          border-bottom: 2px solid transparent;
-          transition: all 0.15s;
-          letter-spacing: 0.5px;
-        }
-        .section-tab.active { color: #f0ede8; border-bottom-color: #c8a96e; }
-
-        .sub-tab {
-          background: none; border: none;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
-          color: #444; cursor: pointer; padding: 10px 0;
-          border-bottom: 2px solid transparent;
-          transition: all 0.15s;
-        }
-        .sub-tab.active { color: #f0ede8; border-bottom-color: #c8a96e; }
-
-        .action-btn {
-          font-family: 'DM Sans', sans-serif; font-size: 11px;
-          letter-spacing: 0.5px; text-transform: uppercase;
-          font-weight: 600; cursor: pointer; padding: 7px 14px;
-          border-radius: 2px; border: 1px solid; transition: all 0.15s;
-          white-space: nowrap;
-        }
-        .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        .report-badge {
-          display: inline-flex; align-items: center; gap: 4px;
-          background: rgba(248,113,113,0.1);
-          border: 1px solid rgba(248,113,113,0.25);
-          color: #f87171;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px; font-weight: 700;
-          padding: 3px 8px; border-radius: 4px;
-        }
-
-        .comment-box {
-          background: #080808;
-          border-left: 2px solid #f87171;
-          padding: 12px 16px;
-          border-radius: 0 4px 4px 0;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 14px; line-height: 1.6;
-          color: #ccc;
-          margin: 12px 0;
-        }
-
-        .scores-row {
-          display: flex; gap: 12px; flex-wrap: wrap;
-          margin-top: 10px;
-        }
-        .score-chip {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px; color: #555;
-        }
-        .score-chip span { color: #888; font-weight: 600; }
-      `}} />
-
-      {/* ── Nav ── */}
-      <nav style={{
-        padding: "0 32px", height: "56px",
-        borderBottom: "1px solid #141414",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <Link href="/" className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>← Back to Site</Link>
-        <span className="playfair" style={{ fontSize: "16px", fontWeight: 700 }}>
-          Admin <span style={{ color: "#c8a96e" }}>Dashboard</span>
-        </span>
-        <span className="dmsans" style={{ fontSize: "11px", color: "#444" }}>{session.user?.email?.split("@")[0]}</span>
-      </nav>
-
-      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 24px" }}>
-
-        {/* ── Page header ── */}
-        <div style={{ marginBottom: "32px" }}>
-          <span className="tag" style={{ display: "block", marginBottom: "10px" }}>Moderation Centre</span>
-          <h1 className="playfair" style={{ fontSize: "32px", fontWeight: 900, margin: 0, letterSpacing: "-1px" }}>
-            Admin Dashboard
+          <h1 className="text-[17px] font-extrabold text-white tracking-tight m-0 flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-cyan-300 text-[18px]" aria-hidden="true">admin_panel_settings</span>
+            <span>Dashboard</span>
           </h1>
-        </div>
 
-        {/* ── Section tabs: Colleges / Reports ── */}
-        <div style={{ display: "flex", gap: "32px", borderBottom: "1px solid #141414", marginBottom: "32px" }}>
+          <div className="px-2 py-0.5 rounded-full liquid-badge text-[10px] font-bold text-cyan-200">
+            {session.user?.email?.split("@")[0]}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 z-10 flex flex-col gap-4 max-w-xl mx-auto outline-none">
+        {/* Section Tabs (Colleges vs Reported Reviews) */}
+        <div
+          role="tablist"
+          aria-label="Admin sections"
+          className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl liquid-glass border border-white/10"
+        >
           <button
-            className={`section-tab${section === "colleges" ? " active" : ""}`}
+            role="tab"
+            id="tab-colleges"
+            aria-selected={section === "colleges"}
+            aria-controls="panel-colleges"
             onClick={() => setSection("colleges")}
+            className={`py-2 px-3 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+              section === "colleges"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-white/20"
+                : "text-white/60 hover:text-white"
+            }`}
           >
-            Colleges
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">school</span>
+            <span>Colleges</span>
           </button>
+
           <button
-            className={`section-tab${section === "reports" ? " active" : ""}`}
+            role="tab"
+            id="tab-reports"
+            aria-selected={section === "reports"}
+            aria-controls="panel-reports"
             onClick={() => setSection("reports")}
+            className={`py-2 px-3 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+              section === "reports"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-white/20"
+                : "text-white/60 hover:text-white"
+            }`}
           >
-            Reported Reviews
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">flag</span>
+            <span>Reported</span>
             {reports.length > 0 && (
-              <span style={{
-                marginLeft: "8px", background: "#f87171", color: "#080808",
-                fontSize: "10px", fontWeight: 700, padding: "1px 6px",
-                borderRadius: "10px", verticalAlign: "middle",
-              }}>
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-extrabold">
                 {reports.length}
               </span>
             )}
@@ -339,14 +288,25 @@ export default function AdminPage() {
             SECTION: COLLEGES
         ══════════════════════════════════════════ */}
         {section === "colleges" && (
-          <>
+          <div role="tabpanel" id="panel-colleges" aria-labelledby="tab-colleges" className="flex flex-col gap-3">
             {/* Sub-tabs */}
-            <div style={{ display: "flex", gap: "24px", borderBottom: "1px solid #141414", marginBottom: "24px" }}>
+            <div
+              role="tablist"
+              aria-label="Filter colleges by status"
+              className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5"
+            >
               {(["PENDING", "APPROVED", "REJECTED"] as const).map(t => (
                 <button
                   key={t}
-                  className={`sub-tab${collegeTab === t ? " active" : ""}`}
+                  role="tab"
+                  id={`tab-college-${t.toLowerCase()}`}
+                  aria-selected={collegeTab === t}
                   onClick={() => setCollegeTab(t)}
+                  className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold tracking-wider transition-all ${
+                    collegeTab === t
+                      ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40"
+                      : "liquid-glass-pill text-white/60 hover:text-white"
+                  }`}
                 >
                   {t}
                 </button>
@@ -354,125 +314,144 @@ export default function AdminPage() {
             </div>
 
             {collegesLoading ? (
-              <div className="dmsans" style={{ padding: "60px 0", textAlign: "center", color: "#333", fontSize: "13px" }}>
-                Loading...
+              <div role="status" aria-live="polite" className="text-center py-10 text-cyan-300 font-semibold text-sm">
+                Loading college submissions...
               </div>
             ) : colleges.length === 0 ? (
-              <div style={{ padding: "60px 0", textAlign: "center", border: "1px solid #141414" }}>
-                <p className="playfair" style={{ fontSize: "18px", color: "#2a2a2a", fontStyle: "italic", margin: 0 }}>
-                  No {collegeTab.toLowerCase()} submissions.
-                </p>
+              <div className="rounded-[22px] liquid-glass p-8 text-center flex flex-col items-center gap-2">
+                <span className="material-symbols-outlined text-white/40 text-[32px]" aria-hidden="true">inbox</span>
+                <p className="text-white/80 font-semibold text-[14px] m-0">No {collegeTab.toLowerCase()} submissions</p>
+                <p className="text-white/50 text-[12px] m-0">Submissions from students will appear here.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <ul role="list" aria-label="Submitted colleges" className="flex flex-col gap-2.5 p-0 m-0 list-none">
                 {colleges.map(c => (
-                  <div key={c.id} className="card">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", flexWrap: "wrap" }}>
-                      <div style={{ flex: 1 }}>
-                        <h2 className="playfair" style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 6px", letterSpacing: "-0.3px" }}>
-                          {c.name}
-                        </h2>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                          <a href={c.website} target="_blank" rel="noopener" className="dmsans" style={{ fontSize: "12px", color: "#c8a96e", textDecoration: "none" }}>
-                            {c.website} ↗
-                          </a>
-                          {(c.city || c.state) && (
-                            <span className="dmsans" style={{ fontSize: "12px", color: "#555" }}>
-                              {[c.city, c.state, c.country].filter(Boolean).join(", ")}
-                            </span>
+                  <li key={c.id} className="list-none">
+                    <div className="rounded-[22px] liquid-glass p-4 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h2 className="text-[16px] font-extrabold text-white truncate m-0">
+                            {c.name}
+                          </h2>
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            <a
+                              href={c.website}
+                              target="_blank"
+                              rel="noopener"
+                              className="text-[12px] text-cyan-300 hover:text-white transition-colors no-underline flex items-center gap-1"
+                            >
+                              <span className="truncate">{c.website}</span>
+                              <span className="material-symbols-outlined text-[13px]" aria-hidden="true">open_in_new</span>
+                            </a>
+                            {(c.city || c.state) && (
+                              <p className="text-[11px] text-white/50 m-0">
+                                {[c.city, c.state, c.country].filter(Boolean).join(", ")}
+                              </p>
+                            )}
+                            {c.emailDomain && (
+                              <p className="text-[11px] text-white/40 font-mono m-0">
+                                @{c.emailDomain}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-white/40 m-0 mt-1">
+                              By: {c.submittedBy.name || c.submittedBy.email} · {new Date(c.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                          {collegeTab === "PENDING" && (
+                            <>
+                              <button
+                                disabled={actioning === c.id}
+                                onClick={() => handleCollegeAction(c.id, "APPROVED")}
+                                aria-label={`Approve ${c.name}`}
+                                className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/30 transition-all"
+                              >
+                                {actioning === c.id ? "..." : "Approve"}
+                              </button>
+                              <button
+                                disabled={actioning === c.id}
+                                onClick={() => handleCollegeAction(c.id, "REJECTED")}
+                                aria-label={`Reject ${c.name}`}
+                                className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-400/30 hover:bg-rose-500/30 transition-all"
+                              >
+                                Reject
+                              </button>
+                            </>
                           )}
-                          {c.emailDomain && (
-                            <span className="dmsans" style={{ fontSize: "11px", color: "#444" }}>
-                              @{c.emailDomain}
-                            </span>
+                          {collegeTab === "APPROVED" && (
+                            <button
+                              onClick={() => handleCollegeAction(c.id, "REJECTED")}
+                              aria-label={`Revoke approval for ${c.name}`}
+                              className="px-3 py-1.5 rounded-full text-[11px] font-bold liquid-glass-pill text-rose-300 hover:text-white transition-all"
+                            >
+                              Revoke
+                            </button>
                           )}
-                          <span className="dmsans" style={{ fontSize: "11px", color: "#444", marginTop: "4px" }}>
-                            By: {c.submittedBy.name || c.submittedBy.email}
-                            <span style={{ color: "#333" }}> · {new Date(c.createdAt).toLocaleDateString()}</span>
-                          </span>
+                          {collegeTab === "REJECTED" && (
+                            <>
+                              <button
+                                onClick={() => handleCollegeAction(c.id, "APPROVED")}
+                                aria-label={`Approve ${c.name}`}
+                                className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/30 transition-all"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleCollegeDelete(c.id)}
+                                aria-label={`Permanently delete ${c.name}`}
+                                className="px-3 py-1.5 rounded-full text-[11px] font-bold liquid-glass-pill text-white/50 hover:text-white transition-all"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
-
-                      <div style={{ display: "flex", gap: "8px", flexShrink: 0, alignItems: "flex-start", flexWrap: "wrap" }}>
-                        {collegeTab === "PENDING" && (
-                          <>
-                            <button className="action-btn" disabled={actioning === c.id}
-                              onClick={() => handleCollegeAction(c.id, "APPROVED")}
-                              style={{ borderColor: "#4ade80", color: "#4ade80", background: "rgba(74,222,128,0.07)" }}>
-                              {actioning === c.id ? "..." : "Approve"}
-                            </button>
-                            <button className="action-btn" disabled={actioning === c.id}
-                              onClick={() => handleCollegeAction(c.id, "REJECTED")}
-                              style={{ borderColor: "#f87171", color: "#f87171", background: "rgba(248,113,113,0.07)" }}>
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        {collegeTab === "APPROVED" && (
-                          <button className="action-btn"
-                            onClick={() => handleCollegeAction(c.id, "REJECTED")}
-                            style={{ borderColor: "#f87171", color: "#f87171", background: "transparent" }}>
-                            Revoke
-                          </button>
-                        )}
-                        {collegeTab === "REJECTED" && (
-                          <>
-                            <button className="action-btn"
-                              onClick={() => handleCollegeAction(c.id, "APPROVED")}
-                              style={{ borderColor: "#4ade80", color: "#4ade80", background: "rgba(74,222,128,0.07)" }}>
-                              Approve
-                            </button>
-                            <button className="action-btn"
-                              onClick={() => handleCollegeDelete(c.id)}
-                              style={{ borderColor: "#333", color: "#555", background: "transparent" }}>
-                              Delete
-                            </button>
-                          </>
-                        )}
-                      </div>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
-          </>
+          </div>
         )}
 
         {/* ══════════════════════════════════════════
             SECTION: REPORTED REVIEWS
         ══════════════════════════════════════════ */}
         {section === "reports" && (
-          <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <p className="dmsans" style={{ fontSize: "13px", color: "#555" }}>
+          <div role="tabpanel" id="panel-reports" aria-labelledby="tab-reports" className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] text-white/60 m-0">
                 {reports.length === 0
                   ? "No reported reviews."
-                  : `${reports.length} review${reports.length !== 1 ? "s" : ""} flagged by students — sorted by most reported.`}
+                  : `${reports.length} flagged review${reports.length !== 1 ? "s" : ""} requiring action.`}
               </p>
               <button
-                className="dmsans"
+                type="button"
                 onClick={fetchReports}
-                style={{ fontSize: "11px", color: "#555", background: "none", border: "1px solid #1e1e1e", padding: "6px 12px", cursor: "pointer", borderRadius: "2px" }}
+                aria-label="Refresh reported reviews list"
+                className="px-2.5 py-1 rounded-full liquid-glass-pill text-[11px] font-semibold text-cyan-300 hover:text-white flex items-center gap-1"
               >
-                Refresh
+                <span className="material-symbols-outlined text-[13px]" aria-hidden="true">refresh</span>
+                <span>Refresh</span>
               </button>
             </div>
 
             {reportsLoading ? (
-              <div className="dmsans" style={{ padding: "60px 0", textAlign: "center", color: "#333", fontSize: "13px" }}>
+              <div role="status" aria-live="polite" className="text-center py-10 text-cyan-300 font-semibold text-sm">
                 Loading reported reviews...
               </div>
             ) : reports.length === 0 ? (
-              <div style={{ padding: "60px 0", textAlign: "center", border: "1px solid #141414", borderRadius: "4px" }}>
-                <p className="playfair" style={{ fontSize: "18px", color: "#2a2a2a", fontStyle: "italic", margin: "0 0 8px" }}>
-                  All clear.
-                </p>
-                <p className="dmsans" style={{ fontSize: "12px", color: "#333" }}>
-                  No reviews have been reported by students.
-                </p>
+              <div className="rounded-[22px] liquid-glass p-8 text-center flex flex-col items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-400 text-[32px]" aria-hidden="true">check_circle</span>
+                <p className="text-white/80 font-semibold text-[15px] m-0">All clear</p>
+                <p className="text-white/50 text-[12px] m-0">No reviews have been flagged by students.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <ul role="list" aria-label="Flagged reviews" className="flex flex-col gap-3 p-0 m-0 list-none">
                 {reports.map(r => {
                   const isExpanded = expandedReport === r.id
                   const isActioning = reportActioning === r.id
@@ -482,144 +461,104 @@ export default function AdminPage() {
                   ).toFixed(1)
 
                   return (
-                    <div key={r.id} className="card" style={{ borderColor: r._count.reports >= 3 ? "rgba(248,113,113,0.2)" : "#141414" }}>
-
-                      {/* Top row */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" }}>
-                        <div style={{ flex: 1 }}>
-                          {/* Faculty name + college */}
-                          <Link
-                            href={`/faculty/${r.faculty.id}`}
-                            target="_blank"
-                            className="playfair"
-                            style={{ fontSize: "17px", fontWeight: 700, color: "#f0ede8", textDecoration: "none", display: "block", marginBottom: "3px" }}
-                          >
-                            {r.faculty.name} ↗
-                          </Link>
-                          <span className="dmsans" style={{ fontSize: "11px", color: "#555" }}>
-                            {[r.faculty.department, r.faculty.college?.name].filter(Boolean).join(" · ")}
-                          </span>
-                        </div>
-
-                        {/* Report badge + date */}
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 }}>
-                          <span className="report-badge">
-                            ⚑ {r._count.reports} {r._count.reports === 1 ? "report" : "reports"}
-                          </span>
-                          <span className="dmsans" style={{ fontSize: "10px", color: "#444" }}>
-                            {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Scores row */}
-                      <div className="scores-row">
-                        {[
-                          { label: "Teaching", val: r.teachingClarity },
-                          { label: "Approach", val: r.approachability },
-                          { label: "Grading", val: r.gradingFairness },
-                          { label: "Punctual", val: r.punctuality },
-                          { label: "No Bias", val: r.partiality },
-                          { label: "Behaviour", val: r.behaviour },
-                        ].map(s => (
-                          <div key={s.label} className="score-chip">
-                            {s.label}: <span>{s.val}/5</span>
-                          </div>
-                        ))}
-                        <div className="score-chip">
-                          Overall: <span style={{ color: "#c8a96e" }}>{overall}</span>
-                        </div>
-                      </div>
-
-                      {/* Written comment */}
-                      {r.review ? (
-                        <>
-                          <div
-                            className="comment-box"
-                            style={{ cursor: "pointer" }}
-                            onClick={() => setExpandedReport(isExpanded ? null : r.id)}
-                          >
-                            {isExpanded ? r.review : (
-                              r.review.length > 180
-                                ? r.review.slice(0, 180) + "..."
-                                : r.review
-                            )}
-                            {r.review.length > 180 && (
-                              <span style={{ color: "#555", fontSize: "12px", marginLeft: "6px" }}>
-                                {isExpanded ? "show less" : "show more"}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Actions when comment exists */}
-                          <div style={{ display: "flex", gap: "8px", marginTop: "14px", flexWrap: "wrap" }}>
-                            <button
-                              className="action-btn"
-                              disabled={isActioning}
-                              onClick={() => handleReportAction(r.id, "clear_comment")}
-                              style={{ borderColor: "#facc15", color: "#facc15", background: "rgba(250,204,21,0.07)" }}
+                    <li key={r.id} className="list-none">
+                      <div className="rounded-[22px] liquid-glass p-4 flex flex-col gap-3 border border-rose-500/30">
+                        {/* Header: Faculty + Report Count */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/faculty/${r.faculty.id}`}
+                              target="_blank"
+                              className="text-[15px] font-extrabold text-white hover:text-cyan-300 transition-colors no-underline flex items-center gap-1"
                             >
-                              {isActioning ? "..." : "Clear Comment Only"}
-                            </button>
-                            <button
-                              className="action-btn"
-                              disabled={isActioning}
-                              onClick={() => handleReportAction(r.id, "dismiss_reports")}
-                              style={{ borderColor: "#4ade80", color: "#4ade80", background: "rgba(74,222,128,0.07)" }}
-                            >
-                              Dismiss Reports
-                            </button>
-                            <button
-                              className="action-btn"
-                              disabled={isActioning}
-                              onClick={() => handleDeleteRating(r.id)}
-                              style={{ borderColor: "#f87171", color: "#f87171", background: "rgba(248,113,113,0.07)" }}
-                            >
-                              Delete Entire Rating
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* No written comment — scores only */}
-                          <div style={{
-                            padding: "10px 14px", margin: "12px 0",
-                            background: "#080808", borderRadius: "4px",
-                            border: "1px solid #141414",
-                          }}>
-                            <p className="dmsans" style={{ fontSize: "12px", color: "#444", margin: 0, fontStyle: "italic" }}>
-                              No written comment — scores only.
+                              <span>{r.faculty.name}</span>
+                              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
+                            </Link>
+                            <p className="text-[11px] text-white/50 m-0 mt-0.5">
+                              {[r.faculty.department, r.faculty.college?.name].filter(Boolean).join(" · ")}
                             </p>
                           </div>
 
-                          <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
-                            <button
-                              className="action-btn"
-                              disabled={isActioning}
-                              onClick={() => handleReportAction(r.id, "dismiss_reports")}
-                              style={{ borderColor: "#4ade80", color: "#4ade80", background: "rgba(74,222,128,0.07)" }}
-                            >
-                              Dismiss Reports
-                            </button>
-                            <button
-                              className="action-btn"
-                              disabled={isActioning}
-                              onClick={() => handleDeleteRating(r.id)}
-                              style={{ borderColor: "#f87171", color: "#f87171", background: "rgba(248,113,113,0.07)" }}
-                            >
-                              Delete Entire Rating
-                            </button>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 text-[11px] font-bold flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[13px]" aria-hidden="true">flag</span>
+                              <span>{r._count.reports} {r._count.reports === 1 ? "report" : "reports"}</span>
+                            </span>
+                            <span className="text-[10px] text-white/40">
+                              {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
                           </div>
-                        </>
-                      )}
-                    </div>
+                        </div>
+
+                        {/* Scores row */}
+                        <div className="grid grid-cols-4 gap-1 p-2 rounded-xl bg-black/40 border border-white/[0.05] text-center text-[10px]">
+                          <div><span className="text-white/40">Teach:</span> <strong className="text-white">{r.teachingClarity}</strong></div>
+                          <div><span className="text-white/40">Approach:</span> <strong className="text-white">{r.approachability}</strong></div>
+                          <div><span className="text-white/40">Grading:</span> <strong className="text-white">{r.gradingFairness}</strong></div>
+                          <div><span className="text-cyan-300">Avg:</span> <strong className="text-cyan-300">{overall}</strong></div>
+                        </div>
+
+                        {/* Written comment */}
+                        {r.review ? (
+                          <button
+                            type="button"
+                            aria-expanded={isExpanded}
+                            onClick={() => setExpandedReport(isExpanded ? null : r.id)}
+                            className="p-3 rounded-xl bg-rose-500/10 border-l-2 border-rose-400 text-left text-[13px] text-white/90 leading-relaxed cursor-pointer hover:bg-rose-500/15 transition-all"
+                          >
+                            <p className="m-0 italic">
+                              "{isExpanded ? r.review : (r.review.length > 160 ? r.review.slice(0, 160) + "..." : r.review)}"
+                            </p>
+                            {r.review.length > 160 && (
+                              <span className="text-cyan-300 text-[11px] font-semibold mt-1 inline-block">
+                                {isExpanded ? "Show less" : "Show more"}
+                              </span>
+                            )}
+                          </button>
+                        ) : (
+                          <div className="p-2.5 rounded-xl bg-white/[0.03] text-[12px] text-white/40 italic">
+                            No written comment — scores only.
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-white/10 flex-wrap">
+                          {r.review && (
+                            <button
+                              disabled={isActioning}
+                              onClick={() => handleReportAction(r.id, "clear_comment")}
+                              aria-label={`Clear written comment for rating on ${r.faculty.name}`}
+                              className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30 hover:bg-amber-500/30 transition-all disabled:opacity-40"
+                            >
+                              {isActioning ? "..." : "Clear Comment"}
+                            </button>
+                          )}
+                          <button
+                            disabled={isActioning}
+                            onClick={() => handleReportAction(r.id, "dismiss_reports")}
+                            aria-label={`Dismiss reports for rating on ${r.faculty.name}`}
+                            className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/30 transition-all disabled:opacity-40"
+                          >
+                            Dismiss Reports
+                          </button>
+                          <button
+                            disabled={isActioning}
+                            onClick={() => handleDeleteRating(r.id)}
+                            aria-label={`Delete entire rating for ${r.faculty.name}`}
+                            className="px-3 py-1.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-400/30 hover:bg-rose-500/30 transition-all disabled:opacity-40"
+                          >
+                            Delete Entire Rating
+                          </button>
+                        </div>
+                      </div>
+                    </li>
                   )
                 })}
-              </div>
+              </ul>
             )}
-          </>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   )
 }

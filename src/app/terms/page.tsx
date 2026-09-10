@@ -102,7 +102,7 @@ export default function TermsPage() {
         </Link>
       </nav>
 
-      <main style={{ maxWidth: "800px", margin: "0 auto", padding: "100px 32px" }}>
+      <main id="main-content" tabIndex={-1} className="outline-none" style={{ maxWidth: "800px", margin: "0 auto", padding: "100px 32px" }}>
         
         <header style={{ marginBottom: "80px", textAlign: "center" }}>
           <span style={{ color: "#c8a96e", textTransform: "uppercase", letterSpacing: "3px", fontSize: "12px", fontWeight: 600 }}>
