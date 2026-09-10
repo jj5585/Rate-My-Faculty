@@ -1,304 +1,282 @@
 "use client"
 
-// FIX #6: Replace raw setInterval(fetchMessages, 3000) with SWR.
-//
-// Before: Every open room tab fired 20 serverless function calls/minute.
-//         5 users with open rooms = 6,000 calls/hour from rooms alone.
-//
-// After with SWR:
-//   - refreshInterval: 8000 → 7.5 calls/minute (62% reduction vs 3s polling)
-//   - revalidateOnFocus: false → no burst when user switches tabs back
-//   - dedupingInterval: 5000 → if component remounts quickly, no duplicate call
-//   - Multiple tabs on same room share a single in-flight request (SWR dedup)
-//
-// Install SWR if not already: npm install swr
-
 import { useState, useEffect, useRef, use } from "react"
 import { useSession, signIn } from "next-auth/react"
-import useSWR from "swr"
 import Link from "next/link"
 
+type Message = {
+  id: string
+  content: string
+  createdAt: string
+  userHash: string
+}
+
 function timeStr(date: string) {
-  return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const d = new Date(date)
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-// Typed fetcher for SWR
-async function fetcher(url: string) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("Failed to fetch messages")
-  return res.json()
-}
-
-export default function RoomPage({ params }: { params: Promise<{ code: string }> }) {
+export default function RoomChatPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params)
   const { data: session, status } = useSession()
-  const [messages, setMessages] = useState<any[]>([])
+
+  const [password, setPassword] = useState("")
+  const [authed, setAuthed] = useState(false)
   const [room, setRoom] = useState<any>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [myHash, setMyHash] = useState<string>("")
   const [content, setContent] = useState("")
   const [sending, setSending] = useState(false)
   const [error, setError] = useState("")
-  const [password, setPassword] = useState("")
-  const [authed, setAuthed] = useState(false)
-  const [myHash, setMyHash] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(`room_${code}`)
-    if (stored) { setPassword(stored); setAuthed(true) }
+    const savedPass = sessionStorage.getItem(`room_${code}_pass`)
+    if (savedPass) {
+      setPassword(savedPass)
+      verifyRoom(savedPass)
+    }
   }, [code])
 
-  // FIX #6: SWR replaces the manual setInterval polling.
-  // Key is null when not authed — SWR won't fetch until credentials are ready.
-  const swrKey = authed && password
-    ? `/api/rooms/${code}/messages?password=${encodeURIComponent(password)}`
-    : null
-
-  const { data: roomData, mutate: refreshMessages } = useSWR(
-    swrKey,
-    fetcher,
-    {
-      refreshInterval: 8000,          // poll every 8s (was 3s — 62% fewer calls)
-      revalidateOnFocus: false,        // don't re-fetch on tab focus (was implicit with setInterval)
-      revalidateOnReconnect: true,     // re-fetch when connection restores
-      dedupingInterval: 5000,          // collapse duplicate requests within 5s
-    }
-  )
-
-  // Sync SWR data into local state
   useEffect(() => {
-    if (roomData?.messages) setMessages(roomData.messages)
-    if (roomData?.room) setRoom(roomData.room)
-  }, [roomData])
+    if (!authed) return
+    const interval = setInterval(fetchMessages, 3000)
+    return () => clearInterval(interval)
+  }, [authed, code, password])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  async function verifyRoom(pass: string) {
+    try {
+      const res = await fetch(`/api/rooms/${code}/messages?password=${encodeURIComponent(pass)}`)
+      const data = await res.json()
+      if (res.ok) {
+        setRoom(data.room)
+        setMessages(data.messages || [])
+        setMyHash(data.userHash || "")
+        setAuthed(true)
+        sessionStorage.setItem(`room_${code}_pass`, pass)
+      } else {
+        setError(data.error || "Incorrect password")
+      }
+    } catch {
+      setError("Failed to connect")
+    }
+  }
+
+  async function handlePasswordSubmit() {
+    setError("")
+    await verifyRoom(password)
+  }
+
+  async function fetchMessages() {
+    try {
+      const res = await fetch(`/api/rooms/${code}/messages?password=${encodeURIComponent(password)}`)
+      const data = await res.json()
+      if (res.ok) {
+        setMessages(data.messages || [])
+      }
+    } catch {
+      // silent polling error
+    }
+  }
+
   async function handleSend() {
     if (!content.trim() || sending) return
     setSending(true)
-    const res = await fetch(`/api/rooms/${code}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, password }),
-    })
-    const data = await res.json()
-    if (data.message) {
-      setContent("")
-      setMyHash(data.message.userHash)
-      // Optimistically refresh immediately after sending
-      refreshMessages()
-    } else {
-      setError(data.error || "Failed to send")
-    }
-    setSending(false)
-  }
-
-  function handlePasswordSubmit() {
-    if (password.length === 4) {
-      sessionStorage.setItem(`room_${code}`, password)
-      setAuthed(true)
-    } else {
-      setError("Must be 4 digits")
+    try {
+      const res = await fetch(`/api/rooms/${code}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, password }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setContent("")
+        setMessages(prev => [...prev, data.message])
+      }
+    } finally {
+      setSending(false)
     }
   }
 
-  if (status === "loading") return <div style={{ minHeight: "100vh", backgroundColor: "#080808" }} />
+  const [inviteCopied, setInviteCopied] = useState(false)
+
+  if (status === "loading") return <div className="min-h-screen bg-[#030611]" />
 
   if (!session) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-        <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700&family=DM+Sans:wght@400;600&display=swap');` }} />
-        <div style={{ textAlign: "center", maxWidth: "300px" }}>
-          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "24px", fontWeight: 700, color: "#f0ede8", marginBottom: "12px" }}>
-            Access Restricted
-          </p>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#555", marginBottom: "28px" }}>
-            Sign in to enter this room.
-          </p>
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center px-4 py-12 outline-none">
+        <div className="rounded-[26px] liquid-glass p-8 text-center max-w-sm w-full flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-full liquid-glass flex items-center justify-center text-cyan-300 shadow-liquid-glow">
+            <span className="material-symbols-outlined text-[32px]" aria-hidden="true">lock</span>
+          </div>
+          <h1 className="text-[22px] font-extrabold text-white tracking-tight m-0">Access Restricted</h1>
+          <p className="text-[13px] text-white/70 leading-relaxed m-0">Sign in to enter this private room.</p>
           <button
             onClick={() => signIn("google")}
-            style={{
-              width: "100%", background: "#c8a96e", color: "#080808", border: "none",
-              padding: "14px", fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
-              fontSize: "13px", cursor: "pointer", borderRadius: "2px", textTransform: "uppercase",
-            }}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-[14px]"
           >
             Sign In
           </button>
         </div>
-      </div>
+      </main>
     )
   }
 
   if (!authed) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#080808", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-        <style dangerouslySetInnerHTML={{ __html: `
-          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700&family=DM+Sans:wght@400;600&display=swap');
-          .code-input {
-            width: 100%; background: none; border: none;
-            border-bottom: 1px solid #1e1e1e; color: #f0ede8;
-            font-family: 'Playfair Display', serif; font-size: 48px;
-            font-weight: 700; text-align: center; letter-spacing: 16px;
-            outline: none; padding-bottom: 8px; transition: border-color 0.2s;
-          }
-          .code-input:focus { border-bottom-color: #c8a96e; }
-        `}} />
-        <div style={{ width: "100%", maxWidth: "320px", textAlign: "center" }}>
-          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "16px", color: "#555", letterSpacing: "2px", marginBottom: "36px", textTransform: "uppercase" }}>
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center px-4 py-12 outline-none">
+        <form
+          onSubmit={e => {
+            e.preventDefault()
+            handlePasswordSubmit()
+          }}
+          className="rounded-[26px] liquid-glass p-8 text-center max-w-sm w-full flex flex-col items-center gap-4"
+        >
+          <div className="w-16 h-16 rounded-full liquid-glass flex items-center justify-center text-cyan-300 shadow-liquid-glow">
+            <span className="material-symbols-outlined text-[32px]" aria-hidden="true">key</span>
+          </div>
+          <label htmlFor="room-key-input" className="text-[16px] font-extrabold text-white uppercase tracking-wider block">
             Enter Room Key
-          </p>
+          </label>
           <input
-            className="code-input"
+            id="room-key-input"
+            className="w-full liquid-glass-input text-center text-[36px] font-extrabold tracking-[16px] py-2 rounded-xl text-cyan-300 placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
             value={password}
             onChange={e => setPassword(e.target.value.replace(/\D/g, "").slice(0, 4))}
             placeholder="••••"
             type="password"
-            style={{ marginBottom: "36px" }}
+            inputMode="numeric"
+            maxLength={4}
+            aria-describedby={error ? "key-error" : undefined}
           />
-          {error && <p style={{ fontFamily: "'DM Sans', sans-serif", color: "#f87171", fontSize: "12px", marginBottom: "16px" }}>{error}</p>}
+          {error && <p id="key-error" role="alert" className="text-rose-400 text-[12px] m-0">{error}</p>}
           <button
-            onClick={handlePasswordSubmit}
-            style={{
-              width: "100%", background: "#c8a96e", color: "#080808", border: "none",
-              padding: "14px", fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
-              fontSize: "13px", cursor: "pointer", borderRadius: "2px", textTransform: "uppercase",
-              marginBottom: "16px",
-            }}
+            type="submit"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-[14px]"
           >
             Unlock Room
           </button>
-          <Link href="/rooms" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#444", textDecoration: "none" }}>
+          <Link href="/rooms" className="text-[12px] text-white/60 hover:text-white underline">
             ← Back to Rooms
           </Link>
-        </div>
-      </div>
+        </form>
+      </main>
     )
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8", display: "flex", flexDirection: "column" }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700&family=DM+Sans:wght@300;400;500;600&display=swap');
-        * { box-sizing: border-box; }
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
+    <div className="min-h-screen flex flex-col justify-between relative z-10 selection:bg-blue-600 selection:text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link
+            href="/rooms"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all no-underline"
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+            <span>Rooms</span>
+          </Link>
 
-        .msg-input {
-          flex: 1; background: #0d0d0d; border: 1px solid #1e1e1e;
-          border-radius: 2px; color: #f0ede8; padding: 12px 16px;
-          font-size: 14px; font-family: 'DM Sans', sans-serif;
-          outline: none; transition: border-color 0.2s;
-        }
-        .msg-input:focus { border-color: #c8a96e; }
-        .msg-input::placeholder { color: #333; }
+          <div className="text-center">
+            <h1 className="text-[15px] font-bold text-white tracking-tight m-0 truncate max-w-[160px]">
+              {room?.name || "Private Room"}
+            </h1>
+            <span className="text-[10px] text-cyan-300 uppercase tracking-widest font-semibold">
+              {code} · Encrypted
+            </span>
+          </div>
 
-        .send-btn {
-          width: 44px; height: 44px; border: none; border-radius: 2px;
-          background: #c8a96e; color: #080808; cursor: pointer;
-          font-size: 16px; font-weight: 700; transition: background 0.2s;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-        .send-btn:hover { background: #d4b87a; }
-        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-      `}} />
-
-      <header style={{
-        position: "sticky", top: 0, zIndex: 10,
-        backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #141414",
-        padding: "0 20px", height: "52px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <Link href="/rooms" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#555", textDecoration: "none" }}>
-          ← Rooms
-        </Link>
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "15px", fontWeight: 700, margin: 0 }}>
-            {room?.name || "Private Room"}
-          </p>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#c8a96e", letterSpacing: "2px", textTransform: "uppercase", margin: 0 }}>
-            {code} · Encrypted
-          </p>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`Room: ${room?.name}\nCode: ${code}\nPass: ${password}`)
+              setInviteCopied(true)
+              setTimeout(() => setInviteCopied(false), 3000)
+            }}
+            aria-label="Copy room invite link and password"
+            className="px-3 py-1.5 rounded-full liquid-glass-pill text-[11px] font-semibold text-cyan-300 hover:text-white transition-all active:scale-95"
+          >
+            {inviteCopied ? "Copied!" : "Invite"}
+          </button>
         </div>
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(`Room: ${room?.name}\nCode: ${code}\nPass: ${password}`)
-            alert("Copied!")
-          }}
-          style={{
-            background: "none", border: "1px solid #1e1e1e", color: "#555",
-            padding: "5px 10px", borderRadius: "2px",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
-            fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", cursor: "pointer",
-          }}
-        >
-          Invite
-        </button>
       </header>
 
-      <div style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto" }}>
-        {messages.length === 0 ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "16px", color: "#2a2a2a", fontStyle: "italic" }}>
-              Room open. Start the gossip.
-            </p>
-          </div>
-        ) : (
-          messages.map(m => {
-            const isMe = m.userHash === myHash
-            return (
-              <div key={m.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "80%" }}>
-                <div style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginBottom: "3px" }}>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#2a2a2a", letterSpacing: "1px", textTransform: "uppercase" }}>
+      {inviteCopied && (
+        <div role="status" aria-live="polite" className="sr-only">
+          Room invite details copied to clipboard
+        </div>
+      )}
+
+      {/* Messages Feed */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 w-full max-w-md mx-auto p-4 flex flex-col gap-3 overflow-y-auto pb-48 outline-none"
+      >
+        <div
+          role="log"
+          aria-live="polite"
+          aria-label="Room messages"
+          className="flex flex-col gap-3 flex-1"
+        >
+          {messages.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-2 my-auto">
+              <span className="material-symbols-outlined text-white/30 text-[36px]" aria-hidden="true">chat</span>
+              <p className="text-white/60 font-semibold text-[14px]">Private Room Opened</p>
+              <p className="text-white/40 text-[12px]">No messages yet. Send a message to get the conversation going.</p>
+            </div>
+          ) : (
+            messages.map(m => {
+              const isMe = m.userHash === myHash
+              return (
+                <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[85%]`}>
+                  <span className="text-[10px] text-white/50 px-2 mb-1">
                     {isMe ? "You" : `Anon ${m.userHash.slice(0, 4)}`}
                   </span>
-                </div>
-                <div style={{
-                  padding: "10px 14px",
-                  borderRadius: isMe ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-                  background: isMe ? "#c8a96e" : "#0d0d0d",
-                  border: isMe ? "none" : "1px solid #141414",
-                  color: isMe ? "#080808" : "#ccc",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "14px", lineHeight: "1.5",
-                }}>
-                  {m.content}
-                </div>
-                <div style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginTop: "3px" }}>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#2a2a2a" }}>
+                  <div
+                    className={`p-3.5 rounded-2xl text-[14px] leading-relaxed shadow-sm ${
+                      isMe
+                        ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-br-sm"
+                        : "liquid-glass text-white/90 rounded-bl-sm border border-white/10"
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                  <span className="text-[10px] text-white/40 px-2 mt-1">
                     {timeStr(m.createdAt)}
                   </span>
                 </div>
-              </div>
-            )
-          })
-        )}
-        <div ref={bottomRef} />
-      </div>
+              )
+            })
+          )}
+          <div ref={bottomRef} />
+        </div>
+      </main>
 
-      <div style={{ padding: "12px 20px 16px", borderTop: "1px solid #141414", backgroundColor: "#080808" }}>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+      {/* Bottom Floating Message Input Bar */}
+      <div className="fixed bottom-16 inset-x-0 z-40 p-4 pointer-events-none flex justify-center">
+        <div className="w-full max-w-md pointer-events-auto rounded-[28px] liquid-glass-dock shadow-pill-dock p-2 flex items-center gap-2">
+          <label htmlFor="room-message-input" className="sr-only">Type a message</label>
           <input
-            className="msg-input"
+            id="room-message-input"
+            className="flex-1 liquid-glass-input px-4 py-2.5 rounded-2xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
             value={content}
             onChange={e => setContent(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Type a message..."
+            placeholder="Type anonymous message..."
           />
           <button
-            className="send-btn"
             onClick={handleSend}
             disabled={sending || !content.trim()}
+            aria-label="Send message"
+            className="w-10 h-10 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white flex items-center justify-center disabled:opacity-40 transition-opacity active:scale-95 shadow-sm flex-shrink-0"
           >
-            ↑
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">send</span>
           </button>
         </div>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9px", color: "#1e1e1e", textAlign: "center", marginTop: "8px" }}>
-          Anonymous · We do not verify claims
-        </p>
       </div>
     </div>
   )

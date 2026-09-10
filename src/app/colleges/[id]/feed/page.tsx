@@ -63,17 +63,13 @@ export default function CollegeFeedPage({ params }: { params: Promise<{ id: stri
   const [reported, setReported] = useState<Set<string>>(new Set())
   const [reportMsg, setReportMsg] = useState<string | null>(null)
 
-  // FIX: SWR replaces useEffect + fetchIncidents().
-  // dedupingInterval=5000 collapses the duplicate calls that appeared in the logs
-  // (same endpoint hit multiple times within 200ms due to StrictMode + prefetch).
-  // refreshInterval=30000 provides light polling so new posts appear eventually.
   const { data, mutate: refreshFeed } = useSWR(
     `/api/colleges/${id}/incidents`,
     fetcher,
     {
       dedupingInterval: 5000,
       revalidateOnFocus: false,
-      refreshInterval: 30_000, // soft poll every 30s; users can see new posts
+      refreshInterval: 30_000,
     }
   )
 
@@ -92,7 +88,6 @@ export default function CollegeFeedPage({ params }: { params: Promise<{ id: stri
     const postData = await res.json()
     if (postData.incident) {
       setContent(""); setCategory(""); setShowForm(false)
-      // Immediately revalidate to show the new post
       refreshFeed()
     } else {
       setPostError(postData.error || "Failed to post")
@@ -103,9 +98,7 @@ export default function CollegeFeedPage({ params }: { params: Promise<{ id: stri
   async function handleUpvote(incidentId: string) {
     if (upvoted.has(incidentId)) return
     setUpvoted(prev => new Set([...prev, incidentId]))
-    const res = await fetch(`/api/incidents/${incidentId}/upvote`, { method: "POST" })
-    const d = await res.json()
-    // Optimistic update via mutate
+    await fetch(`/api/incidents/${incidentId}/upvote`, { method: "POST" })
     refreshFeed()
   }
 
@@ -133,243 +126,239 @@ export default function CollegeFeedPage({ params }: { params: Promise<{ id: stri
   const loading = !data
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#080808", color: "#f0ede8" }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
-        * { box-sizing: border-box; }
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
-        .tag { font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; font-weight: 500; }
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white pb-36">
+      {/* Top Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link
+            href={`/colleges/${id}`}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all no-underline"
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+            <span className="truncate max-w-[120px]">{college?.name || "College"}</span>
+          </Link>
 
-        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        .fade-up { animation: fadeUp 0.3s ease forwards; }
+          <h1 className="text-[17px] font-extrabold text-white tracking-tight m-0">
+            Campus <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">Pulse</span>
+          </h1>
 
-        .cat-pill {
-          padding: 6px 14px; border-radius: 2px; font-size: 12px;
-          font-family: 'DM Sans', sans-serif; font-weight: 600;
-          cursor: pointer; border: 1px solid #1e1e1e;
-          background: #0d0d0d; color: #666;
-          white-space: nowrap; transition: all 0.15s; letter-spacing: 0.3px;
-        }
-        .cat-pill.active { background: #c8a96e; color: #080808; border-color: #c8a96e; }
-        .cat-pill:hover:not(.active) { border-color: #333; color: #aaa; }
+          <div className="px-2 py-0.5 rounded-full liquid-badge text-[10px] font-bold text-cyan-200 uppercase tracking-widest">
+            24h Feed
+          </div>
+        </div>
+      </header>
 
-        .post-card {
-          background: #0d0d0d; border: 1px solid #141414;
-          border-radius: 4px; padding: 20px; transition: border-color 0.2s;
-        }
-        .post-card:hover { border-color: #1e1e1e; }
-
-        .post-textarea {
-          width: 100%; height: 110px;
-          background: #080808; border: 1px solid #1e1e1e; border-radius: 2px;
-          color: #f0ede8; padding: 12px; font-size: 14px; font-family: 'DM Sans', sans-serif;
-          outline: none; resize: none; transition: border-color 0.2s; line-height: 1.6;
-        }
-        .post-textarea:focus { border-color: #c8a96e; }
-        .post-textarea::placeholder { color: #333; }
-
-        .btn-gold {
-          background: #c8a96e; color: #080808; border: none;
-          padding: 12px; width: 100%; border-radius: 2px;
-          font-family: 'DM Sans', sans-serif; font-weight: 700;
-          font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;
-          cursor: pointer; transition: background 0.2s, opacity 0.2s;
-        }
-        .btn-gold:hover { background: #d4b87a; }
-        .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .report-btn {
-          background: none; border: 1px solid #1e1e1e;
-          color: #444; padding: 5px 10px; border-radius: 2px;
-          font-family: 'DM Sans', sans-serif; font-size: 10px;
-          font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
-          cursor: pointer; transition: all 0.15s;
-        }
-        .report-btn:hover { border-color: #333; color: #888; }
-        .report-btn.reported { color: #2a2a2a; border-color: #141414; cursor: default; }
-
-        .upvote-btn {
-          background: none; border: 1px solid #1e1e1e;
-          color: #555; padding: 5px 12px; border-radius: 2px;
-          font-family: 'DM Sans', sans-serif; font-size: 11px;
-          font-weight: 600; cursor: pointer; transition: all 0.15s;
-          display: flex; align-items: center; gap: 6px;
-        }
-        .upvote-btn:hover { border-color: #c8a96e; color: #c8a96e; }
-        .upvote-btn.active { border-color: #c8a96e; color: #c8a96e; background: rgba(200,169,110,0.07); }
-
-        .cat-scroll { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
-        .cat-scroll::-webkit-scrollbar { display:none; }
-      `}} />
-
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #141414",
-        padding: "0 20px", height: "52px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <Link href={`/colleges/${id}`} className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>
-          ← {college?.name || "College"}
-        </Link>
-        <span className="playfair" style={{ fontSize: "16px", fontWeight: 700 }}>
-          Campus <span style={{ color: "#c8a96e", fontStyle: "italic" }}>Pulse</span>
-        </span>
-        <span className="tag" style={{ fontSize: "9px" }}>24h feed</span>
-      </nav>
-
-      <main style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 100px" }}>
-
+      {/* Main Content */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 z-10 flex flex-col gap-4 max-w-md mx-auto outline-none">
+        {/* College Banner Capsule */}
         {college && (
-          <div style={{
-            border: "1px solid #1a1a1a", borderLeft: "2px solid #c8a96e",
-            padding: "12px 16px", marginBottom: "20px", borderRadius: "0 2px 2px 0",
-          }}>
-            <p className="dmsans" style={{ fontSize: "12px", color: "#666", margin: 0 }}>
-              <span style={{ color: "#c8a96e", fontWeight: 600 }}>{college.name}</span>
-              <span style={{ color: "#444" }}> · Posts expire in 24h</span>
-            </p>
+          <div className="rounded-2xl liquid-glass p-3.5 flex items-center justify-between border-l-4 border-l-cyan-400">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="material-symbols-outlined text-cyan-400 text-[20px] shrink-0" aria-hidden="true">school</span>
+              <div className="min-w-0">
+                <p className="text-[13px] font-bold text-white truncate m-0">{college.name}</p>
+                <p className="text-[11px] text-white/50 m-0">24-hour disappearing live board</p>
+              </div>
+            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full liquid-badge text-cyan-300 shrink-0">
+              Ephemeral
+            </span>
           </div>
         )}
 
-        <div className="cat-scroll" style={{ marginBottom: "20px" }}>
-          <button className={`cat-pill${activeCategory === "All" ? " active" : ""}`} onClick={() => setActiveCategory("All")}>All</button>
-          {CATEGORIES.map(c => (
-            <button key={c.id} className={`cat-pill${activeCategory === c.id ? " active" : ""}`} onClick={() => setActiveCategory(c.id)}>
-              {c.emoji} {c.id}
-            </button>
-          ))}
+        {/* Category Scroll Filter */}
+        <div role="group" aria-label="Filter incidents by category" className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <button
+            type="button"
+            aria-pressed={activeCategory === "All"}
+            onClick={() => setActiveCategory("All")}
+            className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+              activeCategory === "All"
+                ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_4px_14px_rgba(10,132,255,0.4)] border border-white/30"
+                : "liquid-glass-pill text-white/80 hover:text-white"
+            }`}
+          >
+            All
+          </button>
+          {CATEGORIES.map(c => {
+            const isActive = activeCategory === c.id
+            return (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setActiveCategory(c.id)}
+                className={`flex-shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
+                  isActive
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_4px_14px_rgba(10,132,255,0.4)] border border-white/30"
+                    : "liquid-glass-pill text-white/80 hover:text-white"
+                }`}
+              >
+                <span aria-hidden="true">{c.emoji}</span>
+                <span>{c.id}</span>
+              </button>
+            )
+          })}
         </div>
 
-        <div style={{ marginBottom: "24px" }}>
+        {/* Composer Trigger */}
+        <div>
           {status === "authenticated" ? (
             <button
+              type="button"
+              aria-expanded={showForm}
+              aria-controls="college-incident-compose-panel"
               onClick={() => setShowForm(!showForm)}
-              style={{
-                width: "100%", padding: "14px 16px",
-                background: "#0d0d0d", border: "1px solid #1e1e1e",
-                color: showForm ? "#555" : "#444", textAlign: "left",
-                fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
-                cursor: "pointer", borderRadius: "2px", transition: "border-color 0.2s",
-              }}
+              className="w-full p-4 rounded-2xl liquid-glass text-left text-white/80 hover:text-white flex items-center justify-between transition-all"
             >
-              {showForm ? "✕  Close" : "✏️  What's happening on campus? Post anonymously..."}
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-cyan-300 text-[20px]" aria-hidden="true">edit</span>
+                <span className="text-[13px]">What's happening on campus? Post anonymously...</span>
+              </div>
+              <span className="text-xs text-white/50">{showForm ? "✕" : "+"}</span>
             </button>
           ) : (
-            <div
+            <button
+              type="button"
               onClick={() => signIn("google")}
-              style={{
-                padding: "14px 16px", background: "#0d0d0d", border: "1px solid #1e1e1e",
-                color: "#444", textAlign: "center", cursor: "pointer", borderRadius: "2px",
-                fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
-              }}
+              className="w-full p-3.5 rounded-2xl liquid-glass text-center text-cyan-300 font-semibold text-[13px]"
             >
               Sign in to post anonymously
-            </div>
+            </button>
           )}
         </div>
 
+        {/* Compose Form */}
         {showForm && (
-          <div className="fade-up" style={{ background: "#0d0d0d", border: "1px solid #c8a96e", borderRadius: "4px", padding: "20px", marginBottom: "24px" }}>
+          <form
+            id="college-incident-compose-panel"
+            onSubmit={(e) => { e.preventDefault(); handlePost(); }}
+            className="rounded-[24px] liquid-glass p-5 flex flex-col gap-3 border border-cyan-400/30 shadow-liquid-glow"
+          >
+            <label htmlFor="college-incident-content" className="sr-only">Incident description</label>
             <textarea
-              className="post-textarea"
+              id="college-incident-content"
+              className="w-full liquid-glass-input p-3.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 resize-none h-28"
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="Spill it. Posts disappear in 24 hours."
             />
-            <div className="cat-scroll" style={{ margin: "12px 0" }}>
-              {CATEGORIES.map(c => (
-                <button
-                  key={c.id}
-                  className={`cat-pill${category === c.id ? " active" : ""}`}
-                  onClick={() => setCategory(c.id)}
-                  style={{ fontSize: "11px" }}
-                >
-                  {c.emoji} {c.id}
-                </button>
-              ))}
-            </div>
-            {postError && (
-              <p className="dmsans" style={{ color: "#f87171", fontSize: "12px", marginBottom: "10px" }}>{postError}</p>
-            )}
-            <button className="btn-gold" onClick={handlePost} disabled={posting}>
-              {posting ? "Posting..." : "Send to Feed"}
+
+            <fieldset className="border-none p-0 m-0">
+              <legend className="sr-only">Select Category</legend>
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                {CATEGORIES.map(c => (
+                  <button
+                    type="button"
+                    key={c.id}
+                    aria-pressed={category === c.id}
+                    onClick={() => setCategory(c.id)}
+                    className={`flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold ${
+                      category === c.id
+                        ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white"
+                        : "liquid-glass-pill text-white/70"
+                    }`}
+                  >
+                    <span aria-hidden="true">{c.emoji}</span> {c.id}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            {postError && <p role="alert" className="text-rose-400 text-[12px] m-0">{postError}</p>}
+
+            <button
+              type="submit"
+              disabled={posting}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-bold text-[14px]"
+            >
+              {posting ? "Posting..." : "Send to College Feed"}
             </button>
-            <p className="dmsans" style={{ fontSize: "10px", color: "#333", textAlign: "center", marginTop: "10px", lineHeight: "1.5" }}>
+            <p className="text-[10px] text-white/40 text-center m-0">
               Anonymous · expires in 24h · visible only to {college?.name || "your college"}
             </p>
-          </div>
+          </form>
         )}
 
         {reportMsg && (
-          <div className="fade-up dmsans" style={{
-            background: "rgba(200,169,110,0.07)", border: "1px solid rgba(200,169,110,0.2)",
-            borderRadius: "2px", padding: "10px 14px", marginBottom: "16px",
-            fontSize: "12px", color: "#c8a96e",
-          }}>
+          <div role="status" aria-live="polite" className="p-3 rounded-2xl liquid-glass border border-emerald-400/40 text-emerald-300 text-[13px]">
             ✓ {reportMsg}
           </div>
         )}
 
+        {/* Feed List */}
         {loading ? (
-          <div className="dmsans" style={{ padding: "60px 0", textAlign: "center", color: "#333", fontSize: "13px" }}>
-            Fetching stories...
+          <div role="status" aria-live="polite" className="text-center py-12 text-cyan-300 font-semibold text-sm">
+            Fetching college stories...
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "60px 0", textAlign: "center", border: "1px solid #141414" }}>
-            <p className="playfair" style={{ fontSize: "18px", color: "#2a2a2a", fontStyle: "italic", margin: "0 0 8px" }}>
-              Nothing here yet.
-            </p>
-            <p className="dmsans" style={{ fontSize: "12px", color: "#333" }}>Be the first to post.</p>
+          <div className="rounded-[22px] liquid-glass p-8 text-center flex flex-col items-center gap-2">
+            <span className="material-symbols-outlined text-white/40 text-[32px]" aria-hidden="true">feed</span>
+            <p className="text-white/80 font-semibold text-[15px]">Nothing here yet</p>
+            <p className="text-white/50 text-[13px]">Be the first to post what's happening at {college?.name || "your campus"}.</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <ul role="list" className="flex flex-col gap-2.5 p-0 m-0 list-none" aria-label="College incident feed">
             {filtered.map(incident => {
               const cat = CATEGORIES.find(c => c.id === incident.category)
               const hasUpvoted = upvoted.has(incident.id)
               const hasReported = reported.has(incident.id)
 
               return (
-                <div key={incident.id} className="post-card fade-up">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-                    <span className="dmsans" style={{
-                      fontSize: "10px", fontWeight: 700, letterSpacing: "1px",
-                      color: "#c8a96e", textTransform: "uppercase",
-                    }}>
-                      {cat?.emoji} {incident.category}
-                    </span>
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                      <span className="dmsans" style={{ fontSize: "10px", color: "#444" }}>{timeAgo(incident.createdAt)}</span>
-                      <span className="dmsans" style={{ fontSize: "10px", color: "#555" }}>🔥 {timeLeft(incident.expiresAt)}</span>
+                <li key={incident.id} className="list-none">
+                  <div className="rounded-[22px] liquid-glass p-4 flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1">
+                        <span aria-hidden="true">{cat?.emoji}</span> {incident.category}
+                      </span>
+                      <div className="flex items-center gap-2 text-white/50">
+                        <span>{timeAgo(incident.createdAt)}</span>
+                        <span>•</span>
+                        <span className="text-amber-300 font-semibold">🔥 {timeLeft(incident.expiresAt)}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[14px] leading-relaxed text-white/90 m-0">
+                      {incident.content}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleUpvote(incident.id)}
+                          aria-label={hasUpvoted ? `Upvoted, ${incident.upvotes} upvotes` : `Upvote incident, currently ${incident.upvotes} upvotes`}
+                          className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all ${
+                            hasUpvoted
+                              ? "bg-rose-500/20 text-rose-300 border border-rose-400/30"
+                              : "liquid-glass-pill text-white/70 hover:text-white"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[14px]" aria-hidden="true">favorite</span>
+                          <span>{incident.upvotes}</span>
+                        </button>
+
+                        <button
+                          onClick={() => !hasReported && handleReport(incident.id)}
+                          aria-label={hasReported ? "Incident reported" : "Report incident"}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                            hasReported
+                              ? "text-white/40"
+                              : "liquid-glass-pill text-white/60 hover:text-white"
+                          }`}
+                        >
+                          {hasReported ? "✓ Reported" : "Report"}
+                        </button>
+                      </div>
+
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                        Anonymous
+                      </span>
                     </div>
                   </div>
-
-                  <p className="dmsans" style={{ fontSize: "14px", lineHeight: "1.7", color: "#ccc", margin: "0 0 16px" }}>
-                    {incident.content}
-                  </p>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", borderTop: "1px solid #111", paddingTop: "12px" }}>
-                    <button
-                      className={`upvote-btn${hasUpvoted ? " active" : ""}`}
-                      onClick={() => handleUpvote(incident.id)}
-                    >
-                      {hasUpvoted ? "♥" : "♡"} {incident.upvotes}
-                    </button>
-                    <button
-                      className={`report-btn${hasReported ? " reported" : ""}`}
-                      onClick={() => !hasReported && handleReport(incident.id)}
-                    >
-                      {hasReported ? "✓ Reported" : "⚑ Report"}
-                    </button>
-                    <span className="dmsans" style={{ marginLeft: "auto", fontSize: "10px", color: "#2a2a2a", letterSpacing: "1px", textTransform: "uppercase" }}>
-                      Anonymous
-                    </span>
-                  </div>
-                </div>
+                </li>
               )
             })}
-          </div>
+          </ul>
         )}
       </main>
     </div>

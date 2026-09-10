@@ -1,13 +1,6 @@
 "use client"
 
-// FIX #4: CollegePage split into Server Component (data fetching, zero API calls)
-// + CollegeClientShell (interactive: search, sort, add faculty form, nav).
-//
-// Before: Every visit fired fetchData() from useEffect → /api/colleges/[id] call.
-// After:  Data arrives pre-fetched in HTML. Zero client-side API calls on load.
-// The Add Faculty form still calls /api/faculty/add — that's intentional (POST).
-
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useSession, signIn } from "next-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -31,15 +24,6 @@ type College = {
   emailDomain: string | null
 }
 
-function ratingColor(avg: string | null) {
-  if (!avg) return "#2a2a2a"
-  const n = parseFloat(avg)
-  if (n >= 4.5) return "#4ade80"
-  if (n >= 3.5) return "#facc15"
-  if (n >= 2.5) return "#fb923c"
-  return "#f87171"
-}
-
 export default function CollegeClientShell({
   college,
   faculty: initialFaculty,
@@ -50,16 +34,38 @@ export default function CollegeClientShell({
   const { data: session } = useSession()
   const router = useRouter()
 
-  // All state is local — no useEffect fetching on mount
   const [faculty] = useState<Faculty[]>(initialFaculty)
   const [query, setQuery] = useState("")
   const [showAdd, setShowAdd] = useState(false)
-  const [sortBy, setSortBy] = useState<"rating" | "name" | "reviews">("rating")
+  const [sortBy, setSortBy] = useState<"rating" | "reviews" | "name">("rating")
 
   const [form, setForm] = useState({ name: "", designation: "", department: "", experience: "" })
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState("")
   const [addSuccess, setAddSuccess] = useState("")
+
+  const addTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const facultyNameInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Focus first input when add faculty form expands, or return focus to trigger when collapsed
+  useEffect(() => {
+    if (showAdd) {
+      facultyNameInputRef.current?.focus()
+    }
+  }, [showAdd])
+
+  // Allow Escape key to dismiss the open form and restore focus to trigger
+  useEffect(() => {
+    if (!showAdd) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowAdd(false)
+        addTriggerRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [showAdd])
 
   async function handleAddFaculty() {
     if (!session) { signIn("google"); return }
@@ -98,362 +104,320 @@ export default function CollegeClientShell({
     return a.name.localeCompare(b.name)
   })
 
+  const location = [college.city, college.state, college.country].filter(Boolean).join(", ")
+
   return (
-    <div style={{
-      minHeight: "100vh",
-      backgroundColor: "#080808",
-      color: "#f0ede8",
-      fontFamily: "'Georgia', serif",
-    }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
-        * { box-sizing: border-box; }
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans { font-family: 'DM Sans', sans-serif !important; }
-        .tag { font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; }
-
-        .faculty-row {
-          display: flex;
-          align-items: flex-start;
-          padding: 14px 16px;
-          border-bottom: 1px solid #111;
-          text-decoration: none;
-          color: inherit;
-          transition: background 0.15s;
-          gap: 12px;
-        }
-        .faculty-row:hover { background: #0d0d0d; }
-        .faculty-row:last-child { border-bottom: none; }
-
-        .sort-btn {
-          background: transparent;
-          border: 1px solid #1e1e1e;
-          color: #555;
-          padding: 6px 14px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          cursor: pointer;
-          border-radius: 2px;
-          transition: all 0.15s;
-        }
-        .sort-btn.active { border-color: #c8a96e; color: #c8a96e; background: rgba(200,169,110,0.07); }
-        .sort-btn:hover { border-color: #333; color: #888; }
-
-        .form-input {
-          background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 2px;
-          color: #f0ede8; padding: 12px 16px; font-size: 14px; width: 100%;
-          outline: none; font-family: 'DM Sans', sans-serif; transition: border-color 0.2s;
-        }
-        .form-input:focus { border-color: #c8a96e; }
-        .form-input::placeholder { color: #333; }
-
-        .search-input {
-          background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 2px;
-          color: #f0ede8; padding: 10px 16px; font-size: 14px; width: 100%;
-          outline: none; font-family: 'DM Sans', sans-serif; transition: border-color 0.2s;
-        }
-        .search-input:focus { border-color: #c8a96e; }
-        .search-input::placeholder { color: #333; }
-      `}} />
-
-      {/* NAV */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        backgroundColor: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #141414",
-        padding: "0 20px", height: "52px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <Link href="/" className="dmsans" style={{ fontSize: "12px", color: "#555", textDecoration: "none" }}>
-          ← Colleges
-        </Link>
-        <Link href="/" className="playfair" style={{ fontSize: "16px", fontWeight: 700, color: "#f0ede8", textDecoration: "none" }}>
-          Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
-        </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button
-            className="dmsans"
-            onClick={() => !session && signIn("google")}
-            style={{ fontSize: "11px", color: "#555", background: "none", border: "none", cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase" }}
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white">
+      {/* Top Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link
+            href="/"
+            aria-label="Back to all colleges"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all no-underline"
           >
-            {session ? session.user?.name?.split(" ")[0] : "Sign In"}
-          </button>
-        </div>
-      </nav>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+            <span>Colleges</span>
+          </Link>
 
-      {/* COLLEGE HEADER */}
-      <div style={{ borderBottom: "1px solid #141414", padding: "28px 20px 24px" }}>
-        <span className="tag" style={{ display: "block", marginBottom: "10px" }}>
-          {[college.city, college.state, college.country].filter(Boolean).join(" · ")}
-        </span>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
-          <div style={{ flex: 1 }}>
-            <h1 className="playfair" style={{
-              fontSize: "clamp(22px, 5vw, 36px)", fontWeight: 900,
-              margin: "0 0 8px", letterSpacing: "-0.5px", lineHeight: 1.15,
-            }}>
-              {college.name}
-            </h1>
-            <a
-              href={college.website} target="_blank" rel="noopener noreferrer"
-              className="dmsans"
-              style={{ fontSize: "11px", color: "#555", textDecoration: "none" }}
-            >
-              {college.website} ↗
-            </a>
-          </div>
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <span className="dmsans" style={{ fontSize: "28px", fontWeight: 700, color: "#c8a96e", letterSpacing: "-1px" }}>
-              {faculty.length}
-            </span>
-            <div className="tag" style={{ marginTop: "2px" }}>faculty</div>
-          </div>
-        </div>
-      </div>
+          <Link href="/" className="text-[18px] font-extrabold tracking-tight text-white no-underline">
+            RateMy<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">Faculty</span>
+          </Link>
 
-      {/* CONTROLS */}
-      <div style={{ padding: "16px 20px", borderBottom: "1px solid #111" }}>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "12px" }}>
-          <input
-            className="search-input"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search faculty or department..."
-            style={{ flex: 1 }}
-          />
-          <button
-            className="dmsans"
-            onClick={() => {
-              if (!session) { signIn("google"); return }
-              setShowAdd(!showAdd)
-              setAddError(""); setAddSuccess("")
-            }}
-            style={{
-              background: "none", border: "1px solid #c8a96e", color: "#c8a96e",
-              padding: "8px 14px", fontSize: "11px", letterSpacing: "0.5px",
-              textTransform: "uppercase", cursor: "pointer", borderRadius: "2px",
-              whiteSpace: "nowrap", flexShrink: 0,
-            }}
-          >
-            {showAdd ? "✕" : "+ Add"}
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: "6px" }}>
-          {(["rating", "reviews", "name"] as const).map(s => (
-            <button
-              key={s}
-              className={`sort-btn${sortBy === s ? " active" : ""}`}
-              onClick={() => setSortBy(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ADD FACULTY FORM */}
-      {showAdd && (
-        <div style={{
-          backgroundColor: "#0d0d0d", borderBottom: "1px solid #1e1e1e",
-          padding: "20px",
-        }}>
-          <h3 className="playfair" style={{ fontSize: "18px", margin: "0 0 4px", fontWeight: 700 }}>Add a Faculty Member</h3>
-          <p className="dmsans" style={{ fontSize: "12px", color: "#555", marginBottom: "16px" }}>
-            Adding to {college.name}. Please be accurate.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div>
-              <label className="tag" style={{ display: "block", marginBottom: "6px" }}>Full Name *</label>
-              <input className="form-input" placeholder="Dr. John Smith" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <div>
-                <label className="tag" style={{ display: "block", marginBottom: "6px" }}>Designation</label>
-                <input className="form-input" placeholder="Associate Professor" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} />
-              </div>
-              <div>
-                <label className="tag" style={{ display: "block", marginBottom: "6px" }}>Department</label>
-                <input className="form-input" placeholder="Computer Science" value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
-              </div>
-            </div>
-          </div>
-
-          {addError && <p className="dmsans" style={{ color: "#f87171", fontSize: "12px", marginTop: "12px" }}>{addError}</p>}
-          {addSuccess && <p className="dmsans" style={{ color: "#4ade80", fontSize: "12px", marginTop: "12px" }}>{addSuccess}</p>}
-
-          <button
-            className="dmsans"
-            onClick={handleAddFaculty}
-            disabled={adding}
-            style={{
-              marginTop: "16px", width: "100%",
-              background: "#c8a96e", color: "#080808",
-              border: "none", padding: "13px",
-              fontWeight: 700, fontSize: "13px", letterSpacing: "0.5px",
-              textTransform: "uppercase", cursor: "pointer",
-              borderRadius: "2px", opacity: adding ? 0.6 : 1,
-            }}
-          >
-            {adding ? "Adding..." : "Add Faculty Member"}
-          </button>
-        </div>
-      )}
-
-      {/* FACULTY LIST */}
-      {sorted.length === 0 ? (
-        <div style={{ padding: "60px 20px", textAlign: "center" }}>
-          <p className="playfair" style={{ fontSize: "20px", color: "#2a2a2a", fontStyle: "italic" }}>
-            {query ? "No matching faculty." : "No faculty yet."}
-          </p>
-          {!query && (
-            <p className="dmsans" style={{ fontSize: "12px", color: "#444", marginTop: "8px" }}>
-              Be the first to add a faculty member.
-            </p>
-          )}
-        </div>
-      ) : (
-        <div style={{ borderBottom: "1px solid #111" }}>
-          {sorted.map((f, i) => (
-            <Link key={f.id} href={`/faculty/${f.id}`} className="faculty-row">
-              <span className="dmsans" style={{
-                fontSize: "12px", color: "#333", fontWeight: 600,
-                width: "20px", flexShrink: 0, textAlign: "right",
-                paddingTop: "2px",
-              }}>
-                {i + 1}
-              </span>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="playfair" style={{
-                  margin: "0 0 3px", fontSize: "15px", fontWeight: 700,
-                  color: "#f0ede8", lineHeight: "1.3",
-                  whiteSpace: "normal", wordBreak: "break-word",
-                }}>
-                  {f.name}
-                </p>
-                {(f.designation || f.department) && (
-                  <p className="dmsans" style={{
-                    margin: 0, fontSize: "11px", color: "#555",
-                    whiteSpace: "normal", lineHeight: "1.4",
-                  }}>
-                    {[f.designation, f.department].filter(Boolean).join(" · ")}
-                  </p>
-                )}
-              </div>
-
-              <div style={{ textAlign: "right", flexShrink: 0, paddingTop: "2px" }}>
-                {f.avgRating ? (
-                  <>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "1px", justifyContent: "flex-end" }}>
-                      <span className="playfair" style={{
-                        fontSize: "20px", fontWeight: 700,
-                        color: ratingColor(f.avgRating),
-                      }}>
-                        {f.avgRating}
-                      </span>
-                      <span className="dmsans" style={{ fontSize: "10px", color: "#333" }}>/5</span>
-                    </div>
-                    <p className="dmsans" style={{
-                      margin: "2px 0 0", fontSize: "10px", color: "#444",
-                    }}>
-                      {f.ratingCount} {f.ratingCount === 1 ? "review" : "reviews"}
-                    </p>
-                  </>
+          <div>
+            {session ? (
+              <Link
+                href="/profile"
+                aria-label="Your Profile"
+                className="w-8 h-8 rounded-full liquid-glass overflow-hidden flex items-center justify-center text-white/80 active:scale-95 transition-all border border-white/20"
+              >
+                {session.user?.image ? (
+                  <img src={session.user.image} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="dmsans" style={{ fontSize: "11px", color: "#2a2a2a" }}>—</span>
+                  <span className="text-xs font-bold text-cyan-300">{(session.user?.name || "U")[0].toUpperCase()}</span>
                 )}
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ) : (
+              <button
+                onClick={() => signIn("google")}
+                className="px-3 py-1 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
         </div>
-      )}
+      </header>
 
-      {/* FLOATING BOTTOM UI */}
-      <div style={{
-        position: "fixed",
-        bottom: "32px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        zIndex: 9999,
-        width: "max-content",
-        maxWidth: "95vw"
-      }}>
-        {/* Navigation Pill */}
-        <div style={{
-          backgroundColor: "rgba(13, 13, 13, 0.8)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid #1e1e1e",
-          borderRadius: "40px",
-          display: "flex",
-          padding: "8px 12px",
-          gap: "8px",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
-          height: "52px",
-          alignItems: "center"
-        }}>
+      {/* Main Container */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 pb-40 z-10 flex flex-col gap-4 max-w-md mx-auto outline-none">
+        {/* College Hero Capsule */}
+        <section className="relative overflow-hidden rounded-[26px] liquid-glass p-5 flex flex-col gap-3">
+          <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" aria-hidden="true" />
+          
+          <div className="flex items-center gap-1.5 text-cyan-300 text-[12px] font-medium">
+            <span className="material-symbols-outlined text-[16px] text-blue-400" aria-hidden="true">location_on</span>
+            <span>{location || "India"}</span>
+          </div>
+
+          <h1 className="text-[24px] font-extrabold leading-tight text-white tracking-tight m-0">
+            {college.name}
+          </h1>
+
+          <div className="flex items-center justify-between pt-1 border-t border-white/10 flex-wrap gap-2">
+            <a
+              href={college.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Visit official website for ${college.name} (opens in new tab)`}
+              className="inline-flex items-center gap-1 text-[12px] font-medium text-cyan-300 hover:text-white transition-colors no-underline"
+            >
+              <span>Official Website</span>
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">open_in_new</span>
+            </a>
+
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                {faculty.length} Faculty
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                Verified
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Search & Actions Bar */}
+        <div className="flex flex-col gap-2.5">
+          <form role="search" onSubmit={e => e.preventDefault()} className="relative flex items-center">
+            <label htmlFor="faculty-search-input" className="sr-only">Search faculty or department</label>
+            <span className="material-symbols-outlined absolute left-3.5 text-white/50 text-[20px] pointer-events-none" aria-hidden="true">
+              search
+            </span>
+            <input
+              id="faculty-search-input"
+              type="search"
+              className="w-full liquid-glass-input pl-11 pr-24 py-3 rounded-2xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 transition-all"
+              placeholder="Search faculty or dept..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              aria-describedby="faculty-search-announcement"
+            />
+            <button
+              ref={addTriggerRef}
+              type="button"
+              onClick={() => {
+                if (!session) { signIn("google"); return }
+                setShowAdd(!showAdd)
+                setAddError("")
+                setAddSuccess("")
+              }}
+              aria-expanded={showAdd}
+              aria-controls="add-faculty-form"
+              aria-label={showAdd ? "Close add faculty form" : "Add faculty member"}
+              className="absolute right-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[12px] font-bold tracking-wide active:scale-95 transition-all shadow-sm"
+            >
+              {showAdd ? "✕" : "+ Add"}
+            </button>
+            <div id="faculty-search-announcement" role="status" aria-live="polite" className="sr-only">
+              {query ? `${sorted.length} faculty found.` : ""}
+            </div>
+          </form>
+
+          {/* Sort Buttons */}
+          <div role="group" aria-label="Sort faculty by" className="flex items-center gap-2">
+            <span className="text-[11px] text-white/50 font-semibold uppercase tracking-wider pl-1">Sort:</span>
+            {(["rating", "reviews", "name"] as const).map(s => {
+              const isActive = sortBy === s
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSortBy(s)}
+                  aria-pressed={isActive}
+                  className={`px-3 py-1 rounded-full text-[12px] font-semibold uppercase tracking-wide transition-all ${
+                    isActive
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_2px_10px_rgba(10,132,255,0.4)] border border-white/30"
+                      : "liquid-glass-pill text-white/70 hover:text-white"
+                  }`}
+                >
+                  {s}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Add Faculty Form (Expandable) */}
+        {showAdd && (
+          <form
+            id="add-faculty-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleAddFaculty()
+            }}
+            className="rounded-[24px] liquid-glass p-5 flex flex-col gap-3 border border-cyan-400/30 shadow-liquid-glow"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-[16px] font-bold text-white m-0">Add Faculty Member</h2>
+              <span className="text-[12px] text-white/50">{college.name}</span>
+            </div>
+
+            {addError && (
+              <div role="alert" className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[13px]">
+                {addError}
+              </div>
+            )}
+            {addSuccess && (
+              <div role="status" aria-live="polite" className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[13px]">
+                {addSuccess}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="add-faculty-name" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                Full Name *
+              </label>
+              <input
+                ref={facultyNameInputRef}
+                id="add-faculty-name"
+                required
+                className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                placeholder="Dr. John Smith"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label htmlFor="add-faculty-designation" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                  Designation
+                </label>
+                <input
+                  id="add-faculty-designation"
+                  className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                  placeholder="Associate Professor"
+                  value={form.designation}
+                  onChange={e => setForm({ ...form, designation: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="add-faculty-department" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                  Department
+                </label>
+                <input
+                  id="add-faculty-department"
+                  className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                  placeholder="Computer Science"
+                  value={form.department}
+                  onChange={e => setForm({ ...form, department: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={adding}
+              aria-busy={adding}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold text-[14px] shadow-[0_4px_16px_rgba(10,132,255,0.4)] active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {adding ? "Adding..." : "Add Faculty"}
+            </button>
+          </form>
+        )}
+
+        {/* Faculty List */}
+        {sorted.length === 0 ? (
+          <div className="liquid-glass rounded-[22px] p-8 text-center flex flex-col items-center gap-2">
+            <span className="material-symbols-outlined text-white/40 text-[32px]" aria-hidden="true">person_search</span>
+            <p className="text-white/80 font-semibold text-[15px]">No faculty members found</p>
+            <p className="text-white/50 text-[13px]">Be the first to add a professor from {college.name}.</p>
+          </div>
+        ) : (
+          <ul role="list" className="flex flex-col gap-2.5 p-0 m-0 list-none" aria-label="Faculty Directory">
+            {sorted.map((f, idx) => (
+              <li key={f.id} className="list-none">
+                <Link
+                  href={`/faculty/${f.id}`}
+                  className="group block p-4 rounded-[22px] liquid-glass hover:border-white/30 transition-all duration-200 active:scale-[0.985] no-underline"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    {/* Avatar initial */}
+                    <div
+                      aria-hidden="true"
+                      className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600/30 to-cyan-400/30 border border-cyan-400/40 flex items-center justify-center text-cyan-300 font-extrabold text-[16px] flex-shrink-0 shadow-sm"
+                    >
+                      {f.name.charAt(0)}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[16px] font-bold text-white group-hover:text-cyan-300 transition-colors truncate m-0">
+                        {f.name}
+                      </h3>
+                      {(f.designation || f.department) && (
+                        <p className="text-[12px] text-white/60 truncate m-0 mt-0.5">
+                          {[f.designation, f.department].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Rating Pill */}
+                    <div className="flex flex-col items-end flex-shrink-0">
+                      {f.avgRating ? (
+                        <>
+                          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[12px] font-bold">
+                            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">star</span>
+                            <span aria-hidden="true">{f.avgRating}</span>
+                            <span className="sr-only">Rated {f.avgRating} out of 5 stars</span>
+                          </div>
+                          <span className="text-[10px] text-white/50 mt-0.5">
+                            {f.ratingCount} {f.ratingCount === 1 ? "review" : "reviews"}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/40 text-[11px] font-medium">
+                          New
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
+
+      {/* College Quick Nav Pill Bar */}
+      <div className="fixed bottom-20 inset-x-0 z-40 pointer-events-none flex justify-center px-4">
+        <nav
+          aria-label="College quick links"
+          className="pointer-events-auto rounded-full liquid-glass-pill px-3 py-1.5 flex items-center gap-2 shadow-liquid border border-white/20 backdrop-blur-xl"
+        >
           <Link
             href={`/colleges/${college.id}/feed`}
-            prefetch={false}
-            className="dmsans"
-            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#fff", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+            className="px-3 py-1 rounded-full text-[12px] font-semibold text-white/80 hover:text-white transition-colors no-underline"
           >
             Feed
           </Link>
+          <span className="text-white/20">•</span>
           <Link
             href={`/colleges/${college.id}/today`}
-            prefetch={false}
-            className="dmsans"
-            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+            className="px-3 py-1 rounded-full text-[12px] font-semibold text-white/80 hover:text-white transition-colors no-underline"
           >
             Today
           </Link>
+          <span className="text-white/20">•</span>
           <Link
             href="/rooms"
-            prefetch={false}
-            className="dmsans"
-            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
+            className="px-3 py-1 rounded-full text-[12px] font-semibold text-white/80 hover:text-white transition-colors no-underline"
           >
             Rooms
           </Link>
-        </div>
-
-        {/* Circular Logo Button */}
-        {college.id === 'srmist-kattankulathur' && (
-          <a
-            href="https://www.fcukacademia.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Visit FcuK Academia"
-            style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "50%",
-              overflow: "hidden",
-              border: "1px solid #c8a96e",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(13, 13, 13, 0.9)",
-              backdropFilter: "blur(20px)",
-              boxShadow: "0 0 20px rgba(200, 169, 110, 0.3), 0 20px 50px rgba(0,0,0,0.8)",
-              transition: "all 0.3s ease",
-              cursor: "pointer",
-              flexShrink: 0
-            }}
-          >
-            <img 
-              src="/fcuk-logo.png" 
-              alt="FcuK Academia" 
-              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-            />
-          </a>
-        )}
+        </nav>
       </div>
     </div>
   )

@@ -4,10 +4,6 @@ import Link from "next/link";
 import ShareButton from "@/components/ShareButton";
 import RatingReportButton from "@/components/RatingReportButton";
 
-// FIX #1: was `revalidate = 0` — every request hit the DB directly.
-// Now: serve cached HTML for 60s, regenerate in background.
-// On-demand revalidation in /api/ratings/route.ts (revalidatePath) still works —
-// new ratings appear immediately after submission without waiting for the 60s window.
 export const revalidate = 60;
 
 export default async function FacultyProfile({
@@ -51,391 +47,206 @@ export default async function FacultyProfile({
 
   const writtenReviews = faculty.ratings.filter((r) => r.review && r.review.trim().length > 0);
 
-  function scoreColor(val: number) {
-    if (val === 0) return { text: "#2a2a2a", bar: "#1a1a1a" };
-    if (val >= 4.5) return { text: "#4ade80", bar: "#4ade80" };
-    if (val >= 3.5) return { text: "#facc15", bar: "#facc15" };
-    if (val >= 2.5) return { text: "#fb923c", bar: "#fb923c" };
-    return { text: "#f87171", bar: "#f87171" };
-  }
-
   const overall = overallAvg ?? 0;
-  const overallColor = scoreColor(overall);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      backgroundColor: "#080808",
-      color: "#f0ede8",
-    }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white">
+      {/* Top Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link
+            href={faculty.collegeId ? `/colleges/${faculty.collegeId}` : "/"}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-cyan-300 hover:text-white transition-all no-underline"
+            aria-label={`Back to ${faculty.college?.name || "Directory"}`}
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_back</span>
+            <span className="truncate max-w-[140px]">{faculty.college?.name || "Colleges"}</span>
+          </Link>
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+          <Link href="/" className="text-[17px] font-extrabold tracking-tight text-white no-underline">
+            RateMy<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">Faculty</span>
+          </Link>
 
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
-
-        @keyframes fillBar {
-          from { width: 0%; }
-          to   { width: var(--target-width); }
-        }
-        .bar-fill {
-          animation: fillBar 0.7s ease forwards;
-          animation-delay: var(--delay, 0s);
-          width: 0%;
-        }
-
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .fade-up { animation: fadeUp 0.5s ease forwards; }
-
-        .top-nav {
-          position: sticky; top: 0; z-index: 100;
-          background: rgba(8,8,8,0.96);
-          backdrop-filter: blur(16px);
-          border-bottom: 1px solid #141414;
-          height: 52px;
-          display: flex; align-items: center;
-          justify-content: space-between;
-          padding: 0 20px;
-        }
-
-        .metric-row {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 0;
-          border-bottom: 1px solid #111;
-        }
-        .metric-row:last-child { border-bottom: none; }
-
-        .bar-track {
-          flex: 1;
-          height: 5px;
-          background: #141414;
-          border-radius: 3px;
-          overflow: hidden;
-        }
-
-        .review-card {
-          background: #0d0d0d;
-          border: 1px solid #141414;
-          border-radius: 12px;
-          padding: 18px;
-          margin-bottom: 10px;
-        }
-
-        .rate-btn {
-          display: block;
-          text-align: center;
-          background: #f0ede8;
-          color: #080808;
-          font-family: 'DM Sans', sans-serif;
-          font-weight: 700;
-          font-size: 14px;
-          letter-spacing: 0.5px;
-          padding: 15px;
-          border-radius: 10px;
-          text-decoration: none;
-          transition: background 0.15s;
-        }
-        .rate-btn:active { background: #d4d1cc; }
-
-        .score-badge {
-          display: inline-flex;
-          align-items: baseline;
-          gap: 3px;
-        }
-      `}} />
-
-      <nav className="top-nav">
-        <Link
-          href={faculty.collegeId ? `/colleges/${faculty.collegeId}` : "/"}
-          className="dmsans"
-          style={{ fontSize: "13px", color: "#888", textDecoration: "none" }}
-        >
-          ← {faculty.college?.name || "Directory"}
-        </Link>
-        <span className="playfair" style={{ fontSize: "15px", fontWeight: 700 }}>
-          Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
-        </span>
-        <div style={{ width: "60px", display: "flex", justifyContent: "flex-end" }}>
+          <div className="w-12 flex justify-end" aria-hidden="true" />
         </div>
-      </nav>
+      </header>
 
-      <div className="fade-up" style={{
-        padding: "28px 20px 24px",
-        borderBottom: "1px solid #141414",
-      }}>
-        <div style={{
-          width: "52px", height: "52px", borderRadius: "10px",
-          background: "rgba(200,169,110,0.1)", border: "1px solid rgba(200,169,110,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          marginBottom: "16px",
-        }}>
-          <span className="playfair" style={{ fontSize: "24px", color: "#c8a96e", fontWeight: 700 }}>
-            {faculty.name.charAt(0)}
-          </span>
-        </div>
+      {/* Main Profile Canvas */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 pb-40 z-10 flex flex-col gap-4 max-w-md mx-auto outline-none">
+        {/* Faculty Hero Capsule */}
+        <section className="relative overflow-hidden rounded-[26px] liquid-glass p-5 flex flex-col gap-3">
+          <div className="absolute -top-10 -right-8 w-40 h-40 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" aria-hidden="true" />
 
-        <h1 className="playfair" style={{
-          fontSize: "clamp(22px, 6vw, 32px)",
-          fontWeight: 900, letterSpacing: "-0.5px",
-          lineHeight: 1.1, marginBottom: "6px",
-        }}>
-          {faculty.name}
-        </h1>
+          <div className="flex items-start justify-between gap-3">
+            <div
+              aria-hidden="true"
+              className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600/30 to-cyan-400/30 border border-cyan-400/40 flex items-center justify-center text-cyan-300 font-extrabold text-[24px] shadow-sm flex-shrink-0"
+            >
+              {faculty.name.charAt(0)}
+            </div>
 
-        <p className="dmsans" style={{ fontSize: "13px", color: "#666", marginBottom: "20px" }}>
-          {[faculty.designation, faculty.department].filter(Boolean).join(" · ")}
-        </p>
+            {overallAvg !== null && (
+              <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/35 text-amber-300 font-bold text-[14px]">
+                <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">star</span>
+                <span aria-hidden="true">{overall.toFixed(1)}</span>
+                <span className="text-white/40 text-[11px] font-normal" aria-hidden="true">/ 5.0</span>
+                <span className="sr-only">Rated {overall.toFixed(1)} out of 5.0 stars</span>
+              </div>
+            )}
+          </div>
 
-        {overallAvg !== null ? (
-          <div style={{ display: "flex", alignItems: "flex-end", gap: "12px" }}>
-            <span className="playfair" style={{
-              fontSize: "72px", fontWeight: 900, lineHeight: 1,
-              color: overallColor.text,
-            }}>
-              {overall.toFixed(1)}
-            </span>
-            <div className="dmsans" style={{ paddingBottom: "8px" }}>
-              <div style={{ fontSize: "13px", color: "#555", marginBottom: "2px" }}>out of 5.0</div>
-              <div style={{ fontSize: "12px", color: "#444" }}>
-                {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
+          <div>
+            <h1 className="text-[24px] font-extrabold text-white tracking-tight leading-tight m-0">
+              {faculty.name}
+            </h1>
+            <p className="text-[13px] text-white/60 m-0 mt-1">
+              {[faculty.designation, faculty.department].filter(Boolean).join(" · ")}
+            </p>
+            {faculty.college && (
+              <p className="text-[12px] text-cyan-300/80 m-0 mt-0.5">
+                {faculty.college.name}
+              </p>
+            )}
+          </div>
+
+          {overallAvg !== null ? (
+            <div
+              role="region"
+              aria-label={`Overall rating: ${overall.toFixed(1)} out of 5 stars based on ${totalReviews} reviews`}
+              className="flex items-baseline gap-2 pt-2 border-t border-white/10"
+            >
+              <span className="text-[44px] font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 leading-none">
+                {overall.toFixed(1)}
+              </span>
+              <div className="text-[12px] text-white/60">
+                <span className="font-semibold text-white/80">Overall Score</span> · {totalReviews} {totalReviews === 1 ? "review" : "verified reviews"}
               </div>
             </div>
-          </div>
-        ) : (
-          <p className="dmsans" style={{ fontSize: "14px", color: "#444", fontStyle: "italic" }}>
-            No ratings yet — be the first.
-          </p>
-        )}
-      </div>
+          ) : (
+            <p className="text-[13px] text-white/50 italic m-0 pt-2 border-t border-white/10">
+              No ratings yet — be the first to rate this professor.
+            </p>
+          )}
+        </section>
 
-      <div style={{ padding: "20px 20px 0" }}>
-        <p className="dmsans" style={{
-          fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
-          color: "#444", marginBottom: "12px",
-        }}>
-          Breakdown
-        </p>
-        <div style={{ background: "#0d0d0d", border: "1px solid #141414", borderRadius: "12px", padding: "4px 16px" }}>
-          {metrics.map((m, i) => {
-            const val = getAvg(m.key);
-            const pct = (val / 5) * 100;
-            const col = scoreColor(val);
-            return (
-              <div key={m.key} className="metric-row">
-                <span className="dmsans" style={{
-                  fontSize: "13px", color: "#888", fontWeight: 500,
-                  width: "90px", flexShrink: 0,
-                }}>
-                  {m.label}
-                </span>
-
-                <div className="bar-track">
-                  <div
-                    className="bar-fill"
-                    style={{
-                      "--target-width": `${pct}%`,
-                      "--delay": `${i * 0.08}s`,
-                      height: "100%",
-                      borderRadius: "3px",
-                      background: col.bar,
-                    } as React.CSSProperties}
-                  />
-                </div>
-
-                <span className="dmsans" style={{
-                  fontSize: "15px", fontWeight: 700,
-                  color: col.text, width: "32px",
-                  textAlign: "right", flexShrink: 0,
-                }}>
-                  {totalReviews === 0 ? "—" : val.toFixed(1)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={{ padding: "20px" }}>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <Link href={`/rate/${faculty.id}`} className="rate-btn" style={{ flex: 1 }}>
-            Rate This Faculty
+        {/* Action Buttons: Rate & Share */}
+        <section className="flex gap-2.5">
+          <Link
+            href={`/rate/${faculty.id}`}
+            className="flex-1 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-bold text-[14px] flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(10,132,255,0.4)] active:scale-95 transition-all no-underline"
+          >
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">star_rate</span>
+            <span>Rate Professor</span>
           </Link>
           <ShareButton name={faculty.name} avgRating={overallAvg ? overall.toFixed(1) : null} />
-        </div>
-      </div>
+        </section>
 
-      <div style={{ padding: "0 20px 100px" }}>
-        <p className="dmsans" style={{
-          fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
-          color: "#444", marginBottom: "14px",
-        }}>
-          Student Comments ({writtenReviews.length})
-        </p>
-
-        {writtenReviews.length === 0 ? (
-          <div style={{
-            border: "1px dashed #1a1a1a", borderRadius: "12px",
-            padding: "40px 20px", textAlign: "center",
-          }}>
-            <p className="playfair" style={{ fontSize: "18px", color: "#2a2a2a", fontStyle: "italic" }}>
-              No written comments yet.
-            </p>
-            <p className="dmsans" style={{ fontSize: "12px", color: "#333", marginTop: "8px" }}>
-              Leave a review to help other students.
-            </p>
+        {/* Rating Breakdown Section */}
+        <section className="rounded-[24px] liquid-glass p-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[14px] font-bold text-white uppercase tracking-wider m-0">
+              Rating Breakdown
+            </h2>
+            <span className="text-[11px] text-white/50">Based on 6 criteria</span>
           </div>
-        ) : (
-          writtenReviews.map((r) => {
-            const reviewOverall = (
-              (r.teachingClarity + r.approachability + r.gradingFairness +
-               r.punctuality + r.partiality + r.behaviour) / 6
-            );
-            const rc = scoreColor(reviewOverall);
-            return (
-              <div key={r.id} className="review-card">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                  <div className="score-badge">
-                    <span className="playfair" style={{ fontSize: "22px", fontWeight: 700, color: rc.text }}>
-                      {reviewOverall.toFixed(1)}
-                    </span>
-                    <span className="dmsans" style={{ fontSize: "11px", color: "#333" }}>/5</span>
+
+          <div className="flex flex-col gap-2.5 pt-1">
+            {metrics.map((m) => {
+              const val = getAvg(m.key);
+              const pct = (val / 5) * 100;
+              return (
+                <div key={m.key} className="flex items-center gap-2.5">
+                  <span
+                    id={`metric-${m.key}`}
+                    className="text-[12px] text-white/80 font-medium w-24 flex-shrink-0"
+                  >
+                    {m.label}
+                  </span>
+
+                  <div
+                    role="meter"
+                    aria-labelledby={`metric-${m.key}`}
+                    aria-valuenow={val}
+                    aria-valuemin={0}
+                    aria-valuemax={5}
+                    aria-valuetext={`${m.label}: ${val.toFixed(1)} out of 5`}
+                    className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden"
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
-                  <span className="dmsans" style={{ fontSize: "11px", color: "#444" }}>
-                    {new Date(r.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric", month: "short", year: "numeric"
-                    })}
+
+                  <span
+                    aria-hidden="true"
+                    className="text-[12px] font-bold text-cyan-300 w-8 text-right flex-shrink-0"
+                  >
+                    {totalReviews === 0 ? "—" : val.toFixed(1)}
                   </span>
                 </div>
+              );
+            })}
+          </div>
+        </section>
 
-                <p className="dmsans" style={{
-                  fontSize: "14px", lineHeight: "1.65", color: "#ccc",
-                  borderLeft: `2px solid ${rc.bar}`,
-                  paddingLeft: "12px",
-                }}>
-                  {r.review}
-                </p>
+        {/* Student Reviews Section */}
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-[15px] font-bold text-white tracking-tight m-0">
+              Student Reviews ({writtenReviews.length})
+            </h2>
+            <span className="text-[11px] text-white/50">100% Anonymous</span>
+          </div>
 
-                <div style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #111",
-                }}>
-                  <span className="dmsans" style={{ fontSize: "10px", color: "#2a2a2a", letterSpacing: "1px", textTransform: "uppercase" }}>
-                    Anonymous
-                  </span>
-                  <RatingReportButton ratingId={r.id} />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+          {writtenReviews.length === 0 ? (
+            <div className="liquid-glass rounded-[22px] p-6 text-center flex flex-col items-center gap-1.5">
+              <span className="material-symbols-outlined text-white/40 text-[28px]" aria-hidden="true">chat</span>
+              <p className="text-white/80 font-semibold text-[14px]">No written reviews yet</p>
+              <p className="text-white/50 text-[12px]">Be the first to share your classroom experience.</p>
+            </div>
+          ) : (
+            <ul role="list" aria-label="Student reviews" className="flex flex-col gap-2.5 p-0 m-0 list-none">
+              {writtenReviews.map((r) => {
+                const reviewOverall = (
+                  (r.teachingClarity + r.approachability + r.gradingFairness +
+                   r.punctuality + r.partiality + r.behaviour) / 6
+                );
+                return (
+                  <li key={r.id} className="list-none">
+                    <div className="rounded-[22px] liquid-glass p-4 flex flex-col gap-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/35 text-amber-300 text-[12px] font-bold">
+                          <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">star</span>
+                          <span aria-hidden="true">{reviewOverall.toFixed(1)}</span>
+                          <span className="sr-only">Rating: {reviewOverall.toFixed(1)} out of 5 stars</span>
+                        </div>
+                        <time dateTime={new Date(r.createdAt).toISOString()} className="text-[11px] text-white/50">
+                          {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                            day: "numeric", month: "short", year: "numeric"
+                          })}
+                        </time>
+                      </div>
 
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0,
-        background: "rgba(8,8,8,0.97)", backdropFilter: "blur(12px)",
-        borderTop: "1px solid #141414",
-        padding: "10px 20px",
-        zIndex: 9998,
-      }}>
-        <p className="dmsans" style={{ fontSize: "9px", color: "#2a2a2a", textAlign: "center", lineHeight: "1.5" }}>
-          Content represents user opinions. We do not verify claims.{" "}
-          <Link href="/terms" style={{ color: "#3a3a3a", textDecoration: "underline" }}>Terms</Link>
-          {" · "}
-          <Link href="/privacy" style={{ color: "#3a3a3a", textDecoration: "underline" }}>Privacy</Link>
-        </p>
-      </div>
+                      <p className="text-[13px] leading-relaxed text-white/90 pl-2.5 border-l-2 border-cyan-400/70 m-0">
+                        {r.review}
+                      </p>
 
-      {/* FLOATING BOTTOM UI */}
-      <div style={{
-        position: "fixed",
-        bottom: "32px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        zIndex: 9999,
-        width: "max-content",
-        maxWidth: "95vw"
-      }}>
-        {/* Navigation Pill */}
-        <div style={{
-          backgroundColor: "rgba(13, 13, 13, 0.8)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid #1e1e1e",
-          borderRadius: "40px",
-          display: "flex",
-          padding: "8px 12px",
-          gap: "8px",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
-          height: "52px",
-          alignItems: "center"
-        }}>
-          <Link
-            href={faculty.collegeId ? `/colleges/${faculty.collegeId}/feed` : "/"}
-            prefetch={false}
-            className="dmsans"
-            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#fff", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
-          >
-            Feed
-          </Link>
-          <Link
-            href={faculty.collegeId ? `/colleges/${faculty.collegeId}/today` : "/"}
-            prefetch={false}
-            className="dmsans"
-            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
-          >
-            Today
-          </Link>
-          <Link
-            href="/rooms"
-            prefetch={false}
-            className="dmsans"
-            style={{ padding: "0 18px", height: "36px", display: "flex", alignItems: "center", borderRadius: "30px", fontSize: "12px", color: "#a1a1aa", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}
-          >
-            Rooms
-          </Link>
-        </div>
-
-        {/* Circular Logo Button */}
-        {faculty.collegeId === 'srmist-kattankulathur' && (
-          <a
-            href="https://www.fcukacademia.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Visit FcuK Academia"
-            style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "50%",
-              overflow: "hidden",
-              border: "1px solid #c8a96e",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(13, 13, 13, 0.9)",
-              backdropFilter: "blur(20px)",
-              boxShadow: "0 0 20px rgba(200, 169, 110, 0.3), 0 20px 50px rgba(0,0,0,0.8)",
-              transition: "all 0.3s ease",
-              cursor: "pointer",
-              flexShrink: 0
-            }}
-          >
-            <img 
-              src="/fcuk-logo.png" 
-              alt="FcuK Academia" 
-              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-            />
-          </a>
-        )}
-      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                        <span className="text-[10px] font-semibold tracking-wider text-white/50 uppercase">
+                          Verified Student
+                        </span>
+                        <RatingReportButton ratingId={r.id} />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </main>
     </div>
   );
 }

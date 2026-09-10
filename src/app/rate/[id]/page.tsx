@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
@@ -19,6 +19,7 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
   const { id: facultyId } = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
+  const errorRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,7 +35,11 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
 
   if (status === "loading") {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", color: "#71717a" }}>
+      <div
+        role="status"
+        aria-live="polite"
+        className="min-h-screen flex items-center justify-center text-cyan-300 font-semibold"
+      >
         Initialising Secure Review...
       </div>
     );
@@ -42,29 +47,53 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
 
   if (!session) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#0a0a0a", color: "#fff", padding: "24px" }}>
-        <div style={{ textAlign: "center", maxWidth: "320px", animation: "fadeIn 0.5s ease" }}>
-          <div style={{ fontSize: "40px", marginBottom: "20px" }}>🔒</div>
-          <h1 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px", letterSpacing: "-0.5px" }}>Verified Reviews Only</h1>
-          <p style={{ color: "#71717a", fontSize: "14px", lineHeight: "1.5", marginBottom: "32px" }}>
-            To prevent spam and ensure 1 review per faculty, please sign in with your SRM Google account.
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center px-4 py-12 outline-none">
+        <div className="rounded-[26px] liquid-glass p-8 text-center max-w-sm w-full flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-full liquid-glass flex items-center justify-center text-cyan-300 shadow-liquid-glow">
+            <span className="material-symbols-outlined text-[32px]" aria-hidden="true">lock</span>
+          </div>
+          <h1 className="text-[22px] font-extrabold text-white tracking-tight m-0">
+            Verified Reviews Only
+          </h1>
+          <p className="text-[13px] text-white/70 leading-relaxed m-0">
+            To prevent spam and ensure 1 review per faculty, please sign in with your Google student account.
           </p>
           <button
             onClick={() => signIn("google")}
-            style={{ width: "100%", backgroundColor: "#fff", color: "#000", padding: "16px", borderRadius: "16px", fontWeight: 700, border: "none", cursor: "pointer" }}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-bold text-[14px] shadow-[0_4px_16px_rgba(10,132,255,0.4)] active:scale-95 transition-all"
           >
             Sign in with Google
           </button>
         </div>
-      </div>
+      </main>
     );
   }
+
+  const handleScoreKey = (criterionId: string, num: number, e: React.KeyboardEvent) => {
+    let nextVal = num;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      nextVal = num >= 5 ? 1 : num + 1;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      nextVal = num <= 1 ? 5 : num - 1;
+    } else if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      nextVal = num;
+    } else {
+      return;
+    }
+    setScores((prev) => ({ ...prev, [criterionId]: nextVal }));
+    const btn = document.getElementById(`score-${criterionId}-${nextVal}`);
+    btn?.focus();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const unrated = CRITERIA.filter((c) => scores[c.id] === 0);
     if (unrated.length > 0) {
-      setError(`Please provide a score for all metrics.`);
+      setError(`Please provide a score for all metrics (${unrated.map(u => u.label).join(", ")}).`);
+      setTimeout(() => errorRef.current?.focus(), 50);
       return;
     }
     setLoading(true);
@@ -83,110 +112,141 @@ export default function RatePage({ params }: { params: Promise<{ id: string }> }
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+      setTimeout(() => errorRef.current?.focus(), 50);
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", color: "#f4f4f5", fontFamily: "Inter, sans-serif", paddingBottom: "120px" }}>
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white pb-36">
       {/* Header */}
-      <nav style={{ padding: "16px 20px", borderBottom: "1px solid #1f1f22", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, backgroundColor: "rgba(10,10,10,0.8)", backdropFilter: "blur(12px)", zIndex: 100 }}>
-        <Link href={`/faculty/${facultyId}`} style={{ color: "#71717a", textDecoration: "none", fontSize: "14px" }}>← Cancel</Link>
-        <span style={{ fontSize: "12px", fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "1px" }}>Anonymous Review</span>
-      </nav>
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link
+            href={`/faculty/${facultyId}`}
+            aria-label="Cancel and return to faculty profile"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full liquid-glass-pill text-[12px] font-semibold text-white/80 hover:text-white transition-all no-underline"
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">close</span>
+            <span>Cancel</span>
+          </Link>
 
-      <div style={{ padding: "32px 20px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: 800, letterSpacing: "-1px", margin: "0 0 8px" }}>Rate Faculty</h1>
-        <p style={{ color: "#71717a", fontSize: "15px" }}>Be honest, be helpful, be fair.</p>
-      </div>
-
-      {error && (
-        <div style={{ margin: "0 20px 24px", padding: "16px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid #ef4444", borderRadius: "16px", color: "#ef4444", fontSize: "14px", fontWeight: 500 }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-        {CRITERIA.map((item) => (
-          <div key={item.id} style={{ backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "24px", padding: "20px" }}>
-            <div style={{ marginBottom: "20px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 700, margin: "0 0 4px" }}>{item.label}</h3>
-              <p style={{ fontSize: "12px", color: "#71717a", margin: 0 }}>{item.desc}</p>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px" }}>
-              {[1, 2, 3, 4, 5].map((num) => {
-                const isActive = scores[item.id] === num;
-                const isSelected = scores[item.id] >= num;
-                return (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setScores({ ...scores, [item.id]: num })}
-                    style={{
-                      flex: 1, height: "48px", borderRadius: "12px", border: "none", fontSize: "16px", fontWeight: 800, cursor: "pointer", transition: "all 0.2s",
-                      backgroundColor: isSelected ? "#ef4444" : "#18181b",
-                      color: isSelected ? "#fff" : "#3f3f46",
-                      boxShadow: isActive ? "0 0 15px rgba(239, 68, 68, 0.4)" : "none",
-                      transform: isActive ? "scale(1.05)" : "scale(1)"
-                    }}
-                  >
-                    {num}
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "12px", padding: "0 4px" }}>
-               <span style={{ fontSize: "10px", fontWeight: 700, color: "#3f3f46", textTransform: "uppercase" }}>Poor</span>
-               <span style={{ fontSize: "10px", fontWeight: 700, color: "#3f3f46", textTransform: "uppercase" }}>Excellent</span>
-            </div>
+          <div className="px-2.5 py-0.5 rounded-full liquid-badge flex items-center gap-1">
+            <span className="material-symbols-outlined text-cyan-300 text-[13px]" aria-hidden="true">visibility_off</span>
+            <span className="text-[10px] font-bold text-cyan-200 uppercase tracking-widest">100% Anonymous</span>
           </div>
-        ))}
 
-        <div style={{ backgroundColor: "#111113", border: "1px solid #1f1f22", borderRadius: "24px", padding: "20px" }}>
-          <label style={{ fontSize: "16px", fontWeight: 700, display: "block", marginBottom: "12px" }}>
-            Written Review <span style={{ color: "#3f3f46", fontWeight: 400 }}>(Optional)</span>
-          </label>
-          <textarea
-            value={review}
-            onChange={(e) => setReview(e.target.value)}
-            placeholder="Help other students by describing the teaching style, marking, or attendance policy..."
-            style={{ width: "100%", height: "140px", backgroundColor: "#0a0a0a", border: "1px solid #27272a", borderRadius: "16px", color: "#fff", padding: "16px", fontSize: "14px", outline: "none", resize: "none", transition: "border-color 0.2s" }}
-          />
+          <div className="w-12" aria-hidden="true" />
+        </div>
+      </header>
+
+      {/* Main Form Content */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 z-10 flex flex-col gap-4 max-w-md mx-auto outline-none">
+        <div className="px-1">
+          <h1 className="text-[26px] font-extrabold text-white tracking-tight leading-tight m-0">
+            Rate Faculty Member
+          </h1>
+          <p className="text-[13px] text-white/60 m-0 mt-1">
+            Be honest, be constructive, be fair. Your identity remains strictly private.
+          </p>
         </div>
 
-        {/* Submit Action Area */}
-        <div style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, padding: "16px 20px 20px",
-          backgroundColor: "rgba(10, 10, 10, 0.9)", backdropFilter: "blur(20px)",
-          borderTop: "1px solid #1f1f22", zIndex: 100
-        }}>
+        {error && (
+          <div
+            ref={errorRef}
+            id="form-error-banner"
+            tabIndex={-1}
+            role="alert"
+            aria-live="assertive"
+            className="p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-[13px] flex items-center gap-2 outline-none"
+          >
+            <span className="material-symbols-outlined text-rose-300 text-[18px]" aria-hidden="true">warning</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+          {CRITERIA.map((item) => {
+            const currentScore = scores[item.id];
+            const isInvalid = Boolean(error && currentScore === 0);
+            return (
+              <fieldset
+                key={item.id}
+                className="rounded-[24px] liquid-glass p-4 border border-white/10 flex flex-col gap-2.5"
+              >
+                <legend className="text-[15px] font-bold text-white tracking-tight m-0 float-left w-full">
+                  {item.label} <span aria-hidden="true" className="text-cyan-400">*</span>
+                  <span className="sr-only"> (required rating)</span>
+                </legend>
+                <p id={`${item.id}-desc`} className="text-[12px] text-white/60 m-0 clear-both">
+                  {item.desc}
+                </p>
+
+                <div
+                  role="radiogroup"
+                  aria-required="true"
+                  aria-invalid={isInvalid}
+                  aria-label={`${item.label} score out of 5`}
+                  aria-describedby={isInvalid ? `form-error-banner ${item.id}-desc` : `${item.id}-desc`}
+                  className={`flex gap-2 pt-1 ${isInvalid ? "rounded-xl ring-2 ring-rose-500/50 p-1" : ""}`}
+                >
+                  {[1, 2, 3, 4, 5].map((num) => {
+                    const isChecked = currentScore === num;
+                    const isFilled = currentScore >= num;
+                    const tabIndex = isChecked || (currentScore === 0 && num === 1) ? 0 : -1;
+                    return (
+                      <button
+                        key={num}
+                        id={`score-${item.id}-${num}`}
+                        type="button"
+                        role="radio"
+                        aria-checked={isChecked}
+                        tabIndex={tabIndex}
+                        aria-label={`${item.label}: ${num} out of 5${num === 1 ? " (Poor)" : num === 5 ? " (Excellent)" : ""}`}
+                        onClick={() => setScores({ ...scores, [item.id]: num })}
+                        onKeyDown={(e) => handleScoreKey(item.id, num, e)}
+                        className={`flex-1 h-12 rounded-xl text-[16px] font-extrabold flex items-center justify-center transition-all cursor-pointer ${
+                          isFilled
+                            ? "bg-gradient-to-tr from-blue-600 to-cyan-400 text-white shadow-[0_0_15px_rgba(100,210,255,0.4)] scale-[1.03] border border-cyan-300/40"
+                            : "liquid-glass-pill text-white/50 hover:text-white"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div aria-hidden="true" className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider px-1">
+                  <span>Poor</span>
+                  <span>Excellent</span>
+                </div>
+              </fieldset>
+            );
+          })}
+
+          <div className="rounded-[24px] liquid-glass p-4 border border-white/10 flex flex-col gap-2">
+            <label htmlFor="written-review" className="text-[15px] font-bold text-white tracking-tight block">
+              Written Review <span className="text-white/40 font-normal text-[13px]">(Optional)</span>
+            </label>
+            <textarea
+              id="written-review"
+              value={review}
+              onChange={(e) => setReview(e.target.value)}
+              placeholder="Help other students by describing the teaching style, lab guidance, grading transparency, or attendance approach..."
+              className="w-full h-32 liquid-glass-input p-3.5 rounded-2xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 resize-none transition-all"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%", maxWidth: "600px", margin: "0 auto", display: "block",
-              backgroundColor: "#fff", color: "#000", padding: "18px", borderRadius: "16px",
-              fontSize: "16px", fontWeight: 800, border: "none", cursor: "pointer",
-              transition: "all 0.2s", opacity: loading ? 0.5 : 1
-            }}
+            aria-busy={loading}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white font-bold text-[15px] shadow-[0_12px_28px_rgba(10,132,255,0.4)] active:scale-[0.98] transition-all disabled:opacity-50 mt-1"
           >
-            {loading ? "Posting Anonymously..." : "Publish Review"}
+            {loading ? "Publishing Anonymously..." : "Publish Anonymous Review"}
           </button>
-          {/* Posting Area Disclaimer — Legal Shield Layer 1 */}
-          <p style={{
-            marginTop: "10px",
-            fontSize: "10px",
-            color: "#3f3f46",
-            textAlign: "center",
-            lineHeight: "1.5",
-            maxWidth: "600px",
-            margin: "10px auto 0",
-          }}>
-            All content represents user opinions and experiences. We do not verify claims.
-            Report inappropriate content for review.
-          </p>
-        </div>
-      </form>
+        </form>
+      </main>
     </div>
   );
 }

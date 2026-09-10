@@ -57,11 +57,43 @@ function StoryModal({
   const [upvoted, setUpvoted] = useState(false)
   const [upvotes, setUpvotes] = useState(story.upvotes)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
+  const prevActiveElement = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
+    prevActiveElement.current = document.activeElement as HTMLElement | null
     fetchComments()
     document.body.style.overflow = "hidden"
-    return () => { document.body.style.overflow = "" }
+    closeBtnRef.current?.focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        onClose()
+      } else if (e.key === "Tab" && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.body.style.overflow = ""
+      window.removeEventListener("keydown", handleKeyDown)
+      prevActiveElement.current?.focus()
+    }
   }, [])
 
   async function fetchComments() {
@@ -105,188 +137,107 @@ function StoryModal({
 
   return (
     <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 1000,
-        backgroundColor: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(8px)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
-        padding: "0",
-      }}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
-        width: "100%", maxWidth: "680px",
-        backgroundColor: "#0d0d0d",
-        border: "1px solid #1e1e1e",
-        borderBottom: "none",
-        borderRadius: "16px 16px 0 0",
-        maxHeight: "92vh",
-        display: "flex", flexDirection: "column",
-        animation: "slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
-      }}>
-        <style>{`
-          @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-          }
-        `}</style>
-
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="story-modal-title"
+        className="w-full max-w-lg liquid-glass-dock rounded-t-[32px] sm:rounded-[32px] border border-white/20 max-h-[90vh] flex flex-col shadow-pill-dock animate-in slide-in-from-bottom duration-300 overflow-hidden"
+      >
         {/* Handle bar */}
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 6px" }}>
-          <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "#2a2a2a" }} />
+        <div className="flex justify-center pt-3 pb-1" aria-hidden="true">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
         </div>
 
         {/* Header */}
-        <div style={{ padding: "12px 20px 16px", borderBottom: "1px solid #141414" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-            <div style={{ flex: 1 }}>
-              <span style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
-                color: "#c8a96e", fontWeight: 600,
-              }}>
-                {story.college.name}
-                {story.college.city ? ` · ${story.college.city}` : ""}
-              </span>
-              <h2 style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: "20px", fontWeight: 700,
-                color: "#f0ede8", margin: "6px 0 0",
-                lineHeight: 1.3,
-              }}>
-                {story.title}
-              </h2>
+        <div className="px-5 py-3 border-b border-white/10 flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider block">
+              {story.college.name} {story.college.city ? `· ${story.college.city}` : ""}
+            </span>
+            <h2 id="story-modal-title" className="text-[18px] font-extrabold text-white tracking-tight leading-snug m-0 mt-1">
+              {story.title}
+            </h2>
+            <div className="flex items-center gap-2 mt-1 text-[11px] text-white/50">
+              <span>{timeAgo(story.createdAt)}</span>
+              <span>•</span>
+              <span className="uppercase tracking-wider">Anonymous Student</span>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: "#1a1a1a", border: "none", color: "#666",
-                width: "32px", height: "32px", borderRadius: "50%",
-                cursor: "pointer", fontSize: "16px", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              ✕
-            </button>
           </div>
-          <div style={{
-            display: "flex", gap: "12px", alignItems: "center",
-            marginTop: "10px",
-          }}>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "#444" }}>
-              {timeAgo(story.createdAt)}
-            </span>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "#2a2a2a" }}>·</span>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "#444", letterSpacing: "1px", textTransform: "uppercase" }}>
-              Anonymous
-            </span>
-          </div>
+
+          <button
+            ref={closeBtnRef}
+            onClick={onClose}
+            aria-label="Close story dialog"
+            className="w-8 h-8 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-sm flex-shrink-0 transition-colors"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Body — scrollable */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-          {/* Story content */}
-          <p style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "15px", lineHeight: "1.8", color: "#bbb",
-            marginBottom: "24px",
-          }}>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+          <p className="text-[14px] leading-relaxed text-white/90 m-0">
             {story.content}
           </p>
 
-          {/* Upvote */}
-          <div style={{
-            display: "flex", gap: "8px", alignItems: "center",
-            padding: "14px 0",
-            borderTop: "1px solid #111", borderBottom: "1px solid #111",
-            marginBottom: "24px",
-          }}>
+          {/* Upvote Pill */}
+          <div className="flex items-center gap-3 pt-3 border-t border-white/10">
             <button
               onClick={handleUpvote}
-              style={{
-                display: "flex", alignItems: "center", gap: "6px",
-                background: upvoted ? "rgba(200,169,110,0.1)" : "none",
-                border: `1px solid ${upvoted ? "#c8a96e" : "#1e1e1e"}`,
-                color: upvoted ? "#c8a96e" : "#555",
-                padding: "7px 16px", borderRadius: "2px",
-                fontFamily: "'DM Sans', sans-serif", fontSize: "12px",
-                fontWeight: 700, cursor: "pointer",
-                transition: "all 0.15s",
-              }}
+              aria-label={upvoted ? `Upvoted, ${upvotes} upvotes` : `Upvote story, currently ${upvotes} upvotes`}
+              className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold flex items-center gap-1.5 transition-all ${
+                upvoted
+                  ? "bg-rose-500/20 text-rose-300 border border-rose-400/30"
+                  : "liquid-glass-pill text-white/80 hover:text-white"
+              }`}
             >
-              {upvoted ? "♥" : "♡"} {upvotes}
+              <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: upvoted ? "'FILL' 1" : "'FILL' 0" }} aria-hidden="true">
+                favorite
+              </span>
+              <span>{upvotes}</span>
             </button>
-            <span style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "#444",
-            }}>
-              {story._count.comments} {story._count.comments === 1 ? "comment" : "comments"}
+
+            <span className="text-[12px] text-white/50">
+              {comments.length} {comments.length === 1 ? "comment" : "comments"}
             </span>
           </div>
 
-          {/* Comments */}
-          <div style={{ marginBottom: "80px" }}>
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
-              color: "#444", marginBottom: "16px",
-            }}>
+          {/* Comments List */}
+          <div className="flex flex-col gap-2.5 pt-2">
+            <h3 className="text-[12px] font-bold text-white/60 uppercase tracking-wider m-0">
               Comments
-            </p>
+            </h3>
 
             {loadingComments ? (
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#333" }}>
-                Loading...
-              </p>
+              <p className="text-[13px] text-white/50 m-0">Loading comments...</p>
             ) : comments.length === 0 ? (
-              <p style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: "16px", color: "#2a2a2a", fontStyle: "italic",
-              }}>
-                No comments yet. Be the first.
-              </p>
+              <p className="text-[13px] text-white/50 italic m-0">No comments yet. Be the first to reply.</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <ul role="list" className="flex flex-col gap-2 p-0 m-0 list-none">
                 {comments.map(c => (
-                  <div key={c.id} style={{
-                    background: "#080808", border: "1px solid #141414",
-                    borderRadius: "4px", padding: "12px 14px",
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                      <span style={{
-                        fontFamily: "'DM Sans', sans-serif", fontSize: "10px",
-                        color: "#c8a96e", letterSpacing: "1px", textTransform: "uppercase",
-                        fontWeight: 700,
-                      }}>
-                        Anon {c.userHash.slice(0, 4)}
-                      </span>
-                      <span style={{
-                        fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "#333",
-                      }}>
-                        {timeAgo(c.createdAt)}
-                      </span>
+                  <li key={c.id} className="p-3 rounded-2xl liquid-glass border border-white/10 list-none">
+                    <div className="flex justify-between items-center text-[10px] text-white/50 mb-1">
+                      <span className="font-bold text-cyan-300 uppercase">Anon {c.userHash.slice(0, 4)}</span>
+                      <span>{timeAgo(c.createdAt)}</span>
                     </div>
-                    <p style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: "13px", lineHeight: "1.6", color: "#aaa",
-                      margin: 0,
-                    }}>
-                      {c.content}
-                    </p>
-                  </div>
+                    <p className="text-[13px] text-white/90 m-0 leading-relaxed">{c.content}</p>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
         </div>
 
-        {/* Comment input — fixed at bottom */}
-        <div style={{
-          padding: "12px 16px 20px",
-          borderTop: "1px solid #141414",
-          backgroundColor: "#0d0d0d",
-        }}>
-          <div style={{ display: "flex", gap: "8px" }}>
+        {/* Comment Input */}
+        <div className="p-3 border-t border-white/10 bg-black/40 backdrop-blur-xl">
+          <div className="flex gap-2">
+            <label htmlFor="story-comment-input" className="sr-only">Add a comment</label>
             <textarea
+              id="story-comment-input"
               ref={inputRef}
               value={comment}
               onChange={e => setComment(e.target.value)}
@@ -296,32 +247,18 @@ function StoryModal({
                   handleComment()
                 }
               }}
-              placeholder={session ? "Add a comment..." : "Sign in to comment"}
+              placeholder={session ? "Add an anonymous comment..." : "Sign in to comment"}
               rows={1}
-              style={{
-                flex: 1,
-                background: "#0a0a0a", border: "1px solid #1e1e1e",
-                borderRadius: "2px", color: "#f0ede8",
-                padding: "11px 14px", fontSize: "13px",
-                fontFamily: "'DM Sans', sans-serif",
-                outline: "none", resize: "none",
-                lineHeight: "1.5",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={e => { if (!session) { signIn("google") } }}
+              className="flex-1 liquid-glass-input px-3.5 py-2.5 rounded-xl text-[13px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 resize-none"
+              onFocus={() => { if (!session) signIn("google") }}
             />
             <button
               onClick={handleComment}
               disabled={posting || !comment.trim()}
-              style={{
-                background: "#c8a96e", color: "#080808", border: "none",
-                width: "42px", height: "42px", borderRadius: "2px",
-                cursor: "pointer", fontSize: "16px", fontWeight: 700,
-                flexShrink: 0, opacity: posting || !comment.trim() ? 0.4 : 1,
-                transition: "opacity 0.15s",
-              }}
+              aria-label="Post comment"
+              className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white flex items-center justify-center disabled:opacity-40 transition-opacity flex-shrink-0"
             >
-              ↑
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">send</span>
             </button>
           </div>
         </div>
@@ -348,11 +285,54 @@ function ComposeModal({
   const [content, setContent] = useState("")
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState("")
+  const modalRef = useRef<HTMLDivElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
+  const prevActiveElement = useRef<HTMLElement | null>(null)
+  const titleInputRef = useRef<HTMLInputElement | null>(null)
+  const collegeSearchRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
+    prevActiveElement.current = document.activeElement as HTMLElement | null
     document.body.style.overflow = "hidden"
-    return () => { document.body.style.overflow = "" }
+    closeBtnRef.current?.focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        onClose()
+      } else if (e.key === "Tab" && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.body.style.overflow = ""
+      window.removeEventListener("keydown", handleKeyDown)
+      prevActiveElement.current?.focus()
+    }
   }, [])
+
+  // Shift focus when switching between step 1 (college selection) and step 2 (write story)
+  useEffect(() => {
+    if (step === "write") {
+      titleInputRef.current?.focus()
+    } else if (step === "college") {
+      collegeSearchRef.current?.focus()
+    }
+  }, [step])
 
   async function searchColleges(q: string) {
     if (!q.trim()) { setColleges([]); return }
@@ -390,110 +370,61 @@ function ComposeModal({
 
   return (
     <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 1000,
-        backgroundColor: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(8px)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
-      }}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
-        width: "100%", maxWidth: "680px",
-        backgroundColor: "#0d0d0d",
-        border: "1px solid #1e1e1e",
-        borderBottom: "none",
-        borderRadius: "16px 16px 0 0",
-        maxHeight: "90vh",
-        display: "flex", flexDirection: "column",
-        animation: "slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 6px" }}>
-          <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "#2a2a2a" }} />
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="compose-modal-title"
+        className="w-full max-w-lg liquid-glass-dock rounded-t-[32px] sm:rounded-[32px] border border-white/20 max-h-[90vh] flex flex-col shadow-pill-dock animate-in slide-in-from-bottom duration-300 overflow-hidden"
+      >
+        <div className="flex justify-center pt-3 pb-1" aria-hidden="true">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
         </div>
 
-        <div style={{
-          padding: "12px 20px 16px",
-          borderBottom: "1px solid #141414",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-        }}>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <div>
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
-              color: "#555", marginBottom: "4px",
-            }}>
+            <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider block">
               {step === "college" ? "Step 1 of 2" : "Step 2 of 2"}
-            </p>
-            <h2 style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: "20px", fontWeight: 700, color: "#f0ede8", margin: 0,
-            }}>
-              {step === "college" ? "Pick your college" : "Write your story"}
+            </span>
+            <h2 id="compose-modal-title" className="text-[17px] font-extrabold text-white tracking-tight m-0">
+              {step === "college" ? "Select Your College" : "Write Your Story"}
             </h2>
           </div>
           <button
+            ref={closeBtnRef}
             onClick={onClose}
-            style={{
-              background: "#1a1a1a", border: "none", color: "#666",
-              width: "32px", height: "32px", borderRadius: "50%",
-              cursor: "pointer", fontSize: "16px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >✕</button>
+            aria-label="Close compose dialog"
+            className="w-8 h-8 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-sm"
+          >
+            ✕
+          </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3.5">
           {step === "college" ? (
-            <div>
+            <div className="flex flex-col gap-3">
+              <label htmlFor="compose-college-search" className="sr-only">Search your college</label>
               <input
-                autoFocus
+                ref={collegeSearchRef}
+                id="compose-college-search"
                 value={collegeQuery}
                 onChange={e => handleCollegeInput(e.target.value)}
-                placeholder="Search your college..."
-                style={{
-                  width: "100%", background: "#080808",
-                  border: "1px solid #1e1e1e", borderRadius: "2px",
-                  color: "#f0ede8", padding: "14px 16px",
-                  fontSize: "15px", fontFamily: "'DM Sans', sans-serif",
-                  outline: "none", marginBottom: "12px",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={e => e.currentTarget.style.borderColor = "#c8a96e"}
-                onBlur={e => e.currentTarget.style.borderColor = "#1e1e1e"}
+                placeholder="Type to search your college..."
+                className="w-full liquid-glass-input px-3.5 py-3 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
               />
 
               {selectedCollege && (
-                <div style={{
-                  background: "rgba(200,169,110,0.08)",
-                  border: "1px solid rgba(200,169,110,0.3)",
-                  borderRadius: "4px", padding: "12px 16px",
-                  marginBottom: "12px",
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                }}>
+                <div className="p-3 rounded-xl liquid-glass border border-cyan-400/40 flex items-center justify-between">
                   <div>
-                    <p style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: "13px", color: "#c8a96e", fontWeight: 600, margin: "0 0 2px",
-                    }}>
-                      ✓ {selectedCollege.name}
-                    </p>
-                    {selectedCollege.city && (
-                      <p style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: "11px", color: "#555", margin: 0,
-                      }}>
-                        {selectedCollege.city}
-                      </p>
-                    )}
+                    <span className="text-[13px] font-bold text-cyan-300 block">✓ {selectedCollege.name}</span>
+                    {selectedCollege.city && <span className="text-[11px] text-white/60">{selectedCollege.city}</span>}
                   </div>
                   <button
                     onClick={() => setSelectedCollege(null)}
-                    style={{
-                      background: "none", border: "none", color: "#555",
-                      cursor: "pointer", fontSize: "12px",
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
+                    className="text-[12px] text-white/60 hover:text-white underline"
                   >
                     Change
                   </button>
@@ -501,200 +432,89 @@ function ComposeModal({
               )}
 
               {colleges.length > 0 && (
-                <div style={{
-                  background: "#080808", border: "1px solid #1e1e1e",
-                  borderRadius: "4px", overflow: "hidden",
-                }}>
+                <ul role="list" className="flex flex-col gap-1 p-0 m-0 list-none max-h-48 overflow-y-auto">
                   {colleges.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        setSelectedCollege(c)
-                        setCollegeQuery(c.name)
-                        setColleges([])
-                      }}
-                      style={{
-                        width: "100%", textAlign: "left",
-                        background: "none", border: "none",
-                        borderBottom: "1px solid #111",
-                        padding: "14px 16px", cursor: "pointer",
-                        transition: "background 0.1s",
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "#0d0d0d")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                    >
-                      <p style={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: "14px", color: "#f0ede8",
-                        fontWeight: 500, margin: "0 0 2px",
-                      }}>
-                        {c.name}
-                      </p>
-                      {c.city && (
-                        <p style={{
-                          fontFamily: "'DM Sans', sans-serif",
-                          fontSize: "11px", color: "#555", margin: 0,
-                        }}>
-                          {c.city}
-                        </p>
-                      )}
-                    </button>
+                    <li key={c.id} className="list-none">
+                      <button
+                        onClick={() => {
+                          setSelectedCollege(c)
+                          setCollegeQuery(c.name)
+                          setColleges([])
+                        }}
+                        className="w-full text-left p-3 rounded-xl liquid-glass-pill hover:bg-white/10 text-[13px] text-white transition-colors"
+                      >
+                        <span className="font-bold block">{c.name}</span>
+                        {c.city && <span className="text-[11px] text-white/60">{c.city}</span>}
+                      </button>
+                    </li>
                   ))}
-                </div>
-              )}
-
-              {collegeQuery && colleges.length === 0 && !selectedCollege && (
-                <p style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "13px", color: "#444",
-                }}>
-                  No colleges found. <Link href="/" style={{ color: "#c8a96e" }}>Submit yours →</Link>
-                </p>
+                </ul>
               )}
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px", paddingBottom: "80px" }}>
+            <div className="flex flex-col gap-3">
               {selectedCollege && (
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: "6px",
-                  background: "rgba(200,169,110,0.08)",
-                  border: "1px solid rgba(200,169,110,0.2)",
-                  borderRadius: "2px", padding: "6px 12px",
-                  alignSelf: "flex-start",
-                }}>
-                  <span style={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: "11px", color: "#c8a96e", fontWeight: 600,
-                  }}>
-                    {selectedCollege.name}
-                  </span>
+                <div className="inline-flex self-start px-2.5 py-1 rounded-full liquid-badge text-[11px] font-bold text-cyan-200">
+                  {selectedCollege.name}
                 </div>
               )}
 
               <div>
-                <label style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "10px", letterSpacing: "2px",
-                  textTransform: "uppercase", color: "#555",
-                  display: "block", marginBottom: "8px",
-                }}>
-                  Title
+                <label htmlFor="compose-story-title" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                  Headline
                 </label>
                 <input
-                  autoFocus
+                  ref={titleInputRef}
+                  id="compose-story-title"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="Give your story a headline..."
-                  style={{
-                    width: "100%", background: "#080808",
-                    border: "1px solid #1e1e1e", borderRadius: "2px",
-                    color: "#f0ede8", padding: "13px 16px",
-                    fontSize: "15px", fontFamily: "'Playfair Display', serif",
-                    fontWeight: 700, outline: "none",
-                    transition: "border-color 0.2s",
-                  }}
-                  onFocus={e => e.currentTarget.style.borderColor = "#c8a96e"}
-                  onBlur={e => e.currentTarget.style.borderColor = "#1e1e1e"}
+                  placeholder="e.g. How our lab professor went above and beyond"
+                  className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
                 />
               </div>
 
               <div>
-                <label style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "10px", letterSpacing: "2px",
-                  textTransform: "uppercase", color: "#555",
-                  display: "block", marginBottom: "8px",
-                }}>
-                  Story
+                <label htmlFor="compose-story-content" className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                  Story Details
                 </label>
                 <textarea
+                  id="compose-story-content"
                   value={content}
                   onChange={e => setContent(e.target.value)}
-                  placeholder="Share what happened. Be honest, be respectful."
-                  rows={8}
-                  style={{
-                    width: "100%", background: "#080808",
-                    border: "1px solid #1e1e1e", borderRadius: "2px",
-                    color: "#f0ede8", padding: "13px 16px",
-                    fontSize: "14px", fontFamily: "'DM Sans', sans-serif",
-                    lineHeight: "1.7", outline: "none", resize: "none",
-                    transition: "border-color 0.2s",
-                  }}
-                  onFocus={e => e.currentTarget.style.borderColor = "#c8a96e"}
-                  onBlur={e => e.currentTarget.style.borderColor = "#1e1e1e"}
+                  placeholder="Share what happened. Be honest, be respectful, and keep it constructive."
+                  rows={6}
+                  className="w-full liquid-glass-input px-3.5 py-2.5 rounded-xl text-[14px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 resize-none"
                 />
-                <p style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "10px", color: "#333", marginTop: "6px",
-                }}>
-                  {content.length} chars · minimum 20
-                </p>
+                <span className="text-[10px] text-white/50 mt-1 block">{content.length} chars (min 20)</span>
               </div>
 
-              {error && (
-                <p style={{
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "13px", color: "#f87171",
-                }}>
-                  {error}
-                </p>
-              )}
+              {error && <p role="alert" className="text-rose-400 text-[12px] m-0">{error}</p>}
             </div>
           )}
         </div>
 
-        {/* Footer action */}
-        <div style={{
-          padding: "12px 16px 20px",
-          borderTop: "1px solid #141414",
-          backgroundColor: "#0d0d0d",
-          display: "flex", gap: "10px",
-        }}>
+        {/* Footer */}
+        <div className="p-4 border-t border-white/10 flex gap-2">
           {step === "college" ? (
             <button
               onClick={() => { if (selectedCollege) setStep("write") }}
               disabled={!selectedCollege}
-              style={{
-                flex: 1, background: selectedCollege ? "#c8a96e" : "#1a1a1a",
-                color: selectedCollege ? "#080808" : "#333",
-                border: "none", padding: "14px",
-                fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
-                fontSize: "13px", letterSpacing: "0.5px", textTransform: "uppercase",
-                cursor: selectedCollege ? "pointer" : "not-allowed",
-                borderRadius: "2px", transition: "all 0.2s",
-              }}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-[14px] disabled:opacity-40 transition-opacity"
             >
-              Continue →
+              Continue to Write →
             </button>
           ) : (
             <>
               <button
                 onClick={() => setStep("college")}
-                style={{
-                  background: "none", border: "1px solid #1e1e1e",
-                  color: "#555", padding: "14px 20px",
-                  fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
-                  fontSize: "12px", cursor: "pointer", borderRadius: "2px",
-                  whiteSpace: "nowrap",
-                }}
+                className="px-4 py-3 rounded-xl liquid-glass-pill text-[13px] font-semibold text-white/80"
               >
                 ← Back
               </button>
               <button
                 onClick={handlePost}
                 disabled={posting || !title.trim() || content.length < 20}
-                style={{
-                  flex: 1,
-                  background: posting || !title.trim() || content.length < 20
-                    ? "#1a1a1a" : "#c8a96e",
-                  color: posting || !title.trim() || content.length < 20
-                    ? "#333" : "#080808",
-                  border: "none", padding: "14px",
-                  fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
-                  fontSize: "13px", letterSpacing: "0.5px", textTransform: "uppercase",
-                  cursor: posting ? "not-allowed" : "pointer",
-                  borderRadius: "2px", transition: "all 0.2s",
-                }}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-[14px] disabled:opacity-40 transition-opacity"
               >
                 {posting ? "Publishing..." : "Publish Story"}
               </button>
@@ -706,114 +526,14 @@ function ComposeModal({
   )
 }
 
-// ─── Story Card ───────────────────────────────────────────────────────
-function StoryCard({ story, onClick }: { story: Story; onClick: () => void }) {
-  return (
-    <article
-      onClick={onClick}
-      style={{
-        background: "#0d0d0d",
-        border: "1px solid #141414",
-        borderRadius: "4px", padding: "20px",
-        cursor: "pointer", transition: "border-color 0.2s, background 0.2s",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = "#1e1e1e"
-        e.currentTarget.style.background = "#0f0f0f"
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = "#141414"
-        e.currentTarget.style.background = "#0d0d0d"
-      }}
-    >
-      {/* College tag */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", gap: "6px",
-        marginBottom: "10px",
-      }}>
-        <span style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: "10px", letterSpacing: "1.5px",
-          textTransform: "uppercase", color: "#c8a96e",
-          fontWeight: 700,
-        }}>
-          {story.college.name}
-        </span>
-        {story.college.city && (
-          <span style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "10px", color: "#333",
-          }}>
-            · {story.college.city}
-          </span>
-        )}
-      </div>
-
-      {/* Title */}
-      <h3 style={{
-        fontFamily: "'Playfair Display', serif",
-        fontSize: "17px", fontWeight: 700,
-        color: "#f0ede8", lineHeight: "1.3",
-        margin: "0 0 8px", letterSpacing: "-0.2px",
-      }}>
-        {story.title}
-      </h3>
-
-      {/* Excerpt */}
-      <p style={{
-        fontFamily: "'DM Sans', sans-serif",
-        fontSize: "13px", lineHeight: "1.6", color: "#666",
-        margin: "0 0 14px",
-        display: "-webkit-box",
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: "vertical",
-        overflow: "hidden",
-      } as any}>
-        {story.content}
-      </p>
-
-      {/* Footer */}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        borderTop: "1px solid #111", paddingTop: "12px",
-      }}>
-        <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
-          <span style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "11px", color: "#555",
-            display: "flex", alignItems: "center", gap: "4px",
-          }}>
-            ♡ {story.upvotes}
-          </span>
-          <span style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "11px", color: "#555",
-            display: "flex", alignItems: "center", gap: "4px",
-          }}>
-            💬 {story._count.comments}
-          </span>
-        </div>
-        <span style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: "10px", color: "#333",
-        }}>
-          {timeAgo(story.createdAt)}
-        </span>
-      </div>
-    </article>
-  )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────
+// ─── Main Stories Page ────────────────────────────────────────────────
 export default function StoriesPage() {
   const { data: session } = useSession()
   const [selectedStory, setSelectedStory] = useState<Story | null>(null)
   const [showCompose, setShowCompose] = useState(false)
-  const [filterCollegeId, setFilterCollegeId] = useState<string | null>(null)
   const [stories, setStories] = useState<Story[]>([])
 
-  const swrKey = `/api/stories${filterCollegeId ? `?collegeId=${filterCollegeId}` : ""}`
-  const { data, isLoading, mutate } = useSWR(swrKey, fetcher, {
+  const { data, isLoading } = useSWR("/api/stories", fetcher, {
     dedupingInterval: 15000,
     revalidateOnFocus: false,
   })
@@ -829,199 +549,109 @@ export default function StoriesPage() {
   }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      backgroundColor: "#080808",
-      color: "#f0ede8",
-    }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
-        * { box-sizing: border-box; }
-        .playfair { font-family: 'Playfair Display', Georgia, serif !important; }
-        .dmsans   { font-family: 'DM Sans', sans-serif !important; }
+    <div className="min-h-screen flex flex-col justify-start relative z-10 selection:bg-blue-600 selection:text-white pb-36">
+      {/* Top Header */}
+      <header className="sticky top-0 z-50 w-full pt-2 pb-2 px-4 backdrop-blur-2xl bg-black/40 border-b border-white/[0.08]">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <Link href="/" className="text-[18px] font-extrabold tracking-tight text-white no-underline">
+            RateMy<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">Faculty</span>
+          </Link>
 
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .fade-up { animation: fadeUp 0.4s ease forwards; }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: #080808; }
-        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
-      `}} />
-
-      {/* NAV */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        backgroundColor: "rgba(8,8,8,0.97)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #1a1a1a",
-        padding: "0 20px", height: "52px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <span style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "18px", fontWeight: 700, color: "#f0ede8",
-          }}>
-            Rate<span style={{ color: "#c8a96e" }}>My</span>Faculty
-          </span>
-        </Link>
-        <button
-          onClick={() => {
-            if (!session) { signIn("google"); return }
-            setShowCompose(true)
-          }}
-          style={{
-            background: "#c8a96e", color: "#080808", border: "none",
-            padding: "8px 16px", borderRadius: "2px",
-            fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
-            fontSize: "11px", letterSpacing: "0.5px",
-            textTransform: "uppercase", cursor: "pointer",
-            transition: "background 0.2s",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = "#d4b87a")}
-          onMouseLeave={e => (e.currentTarget.style.background = "#c8a96e")}
-        >
-          + Write Story
-        </button>
-      </nav>
-
-      <main style={{ maxWidth: "680px", margin: "0 auto", padding: "32px 20px 120px" }}>
-
-        {/* Header */}
-        <div className="fade-up" style={{ marginBottom: "32px" }}>
-          <span style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "10px", letterSpacing: "2px",
-            textTransform: "uppercase", color: "#555",
-            display: "block", marginBottom: "10px",
-          }}>
-            Community Stories
-          </span>
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "clamp(32px, 7vw, 52px)",
-            fontWeight: 900, letterSpacing: "-1px",
-            lineHeight: 1.05, margin: "0 0 12px", color: "#f0ede8",
-          }}>
-            Stories from<br />
-            <span style={{ fontStyle: "italic", color: "#c8a96e" }}>campus.</span>
-          </h1>
-          <p style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "14px", color: "#555", lineHeight: "1.6",
-          }}>
-            Anonymous stories from students across India.
-          </p>
+          <button
+            onClick={() => {
+              if (!session) { signIn("google"); return }
+              setShowCompose(true)
+            }}
+            className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-[12px] shadow-sm active:scale-95 transition-all flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[15px]" aria-hidden="true">add</span>
+            <span>Write Story</span>
+          </button>
         </div>
+      </header>
 
-        {/* Feed */}
+      {/* Main Content */}
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full px-4 pt-4 z-10 flex flex-col gap-4 max-w-md mx-auto outline-none">
+        {/* Hero Capsule */}
+        <section className="relative overflow-hidden rounded-[26px] liquid-glass p-5 flex flex-col gap-2">
+          <div className="absolute -top-10 -right-8 w-36 h-36 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" aria-hidden="true" />
+          <div className="inline-flex self-start items-center gap-1 px-3 py-1 rounded-full liquid-badge text-[11px] font-bold text-cyan-200 uppercase tracking-wide">
+            Campus Experiences · Unfiltered
+          </div>
+          <h1 className="text-[26px] font-extrabold text-white tracking-tight leading-tight m-0">
+            Stories from <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-200 to-white">campus.</span>
+          </h1>
+          <p className="text-[13px] text-white/70 leading-relaxed m-0">
+            Anonymous, first-hand accounts of campus life, lab mentorship, and academic growth from students across India.
+          </p>
+        </section>
+
+        {/* Stories List */}
         {isLoading ? (
-          <div style={{
-            padding: "60px 0", textAlign: "center",
-            fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "#333",
-          }}>
+          <div role="status" aria-live="polite" className="text-center py-12 text-cyan-300 font-semibold text-sm">
             Loading stories...
           </div>
         ) : stories.length === 0 ? (
-          <div style={{
-            padding: "60px 20px", textAlign: "center",
-            border: "1px solid #141414", borderRadius: "4px",
-          }}>
-            <p style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: "22px", color: "#2a2a2a", fontStyle: "italic",
-              margin: "0 0 12px",
-            }}>
-              No stories yet.
-            </p>
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: "13px", color: "#444", marginBottom: "24px",
-            }}>
-              Be the first to share one.
-            </p>
+          <div className="rounded-[22px] liquid-glass p-8 text-center flex flex-col items-center gap-2">
+            <span className="material-symbols-outlined text-white/40 text-[32px]" aria-hidden="true">auto_stories</span>
+            <p className="text-white/80 font-semibold text-[15px]">No stories posted yet</p>
+            <p className="text-white/50 text-[13px]">Be the first to share an anonymous story from your campus.</p>
             <button
               onClick={() => {
                 if (!session) { signIn("google"); return }
                 setShowCompose(true)
               }}
-              style={{
-                background: "#c8a96e", color: "#080808", border: "none",
-                padding: "12px 24px", borderRadius: "2px",
-                fontFamily: "'DM Sans', sans-serif", fontWeight: 700,
-                fontSize: "12px", letterSpacing: "0.5px",
-                textTransform: "uppercase", cursor: "pointer",
-              }}
+              className="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-xs font-bold"
             >
               Write First Story
             </button>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {stories.map((story, i) => (
-              <div
-                key={story.id}
-                className="fade-up"
-                style={{ animationDelay: `${i * 0.05}s` }}
-              >
-                <StoryCard
-                  story={story}
+          <ul role="list" className="flex flex-col gap-2.5 p-0 m-0 list-none" aria-label="Community stories feed">
+            {stories.map(story => (
+              <li key={story.id} className="list-none">
+                <button
+                  type="button"
                   onClick={() => setSelectedStory(story)}
-                />
-              </div>
+                  aria-label={`Read story: ${story.title} from ${story.college.name}`}
+                  className="w-full text-left rounded-[22px] liquid-glass p-4 hover:border-white/30 transition-all cursor-pointer active:scale-[0.985] flex flex-col gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                >
+                  <article className="flex flex-col gap-2 w-full">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider">
+                        {story.college.name}
+                      </span>
+                      <span className="text-[11px] text-white/50">{timeAgo(story.createdAt)}</span>
+                    </div>
+
+                    <h2 className="text-[16px] font-bold text-white leading-snug m-0">
+                      {story.title}
+                    </h2>
+
+                    <p className="text-[13px] text-white/70 line-clamp-2 leading-relaxed m-0">
+                      {story.content}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[11px] text-white/60">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[15px] text-rose-400" aria-hidden="true">favorite</span>
+                          <span>{story.upvotes}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[15px] text-cyan-400" aria-hidden="true">chat</span>
+                          <span>{story._count.comments}</span>
+                        </span>
+                      </div>
+                      <span className="text-cyan-300 font-semibold" aria-hidden="true">Read story →</span>
+                    </div>
+                  </article>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </main>
-
-      {/* FLOATING BOTTOM NAV */}
-      <div style={{
-        position: "fixed",
-        bottom: "28px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        backgroundColor: "rgba(13, 13, 13, 0.85)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid #1e1e1e",
-        borderRadius: "40px",
-        display: "flex",
-        padding: "6px 8px",
-        gap: "4px",
-        zIndex: 200,
-        boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
-      }}>
-        <Link
-          href="/"
-          style={{
-            padding: "10px 22px", borderRadius: "30px",
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "12px", color: "#666",
-            textDecoration: "none", fontWeight: 600,
-            whiteSpace: "nowrap", transition: "color 0.15s",
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#f0ede8")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#666")}
-        >
-          Home
-        </Link>
-        <Link
-          href="/stories"
-          style={{
-            padding: "10px 22px", borderRadius: "30px",
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: "12px", color: "#fff",
-            textDecoration: "none", fontWeight: 700,
-            whiteSpace: "nowrap",
-            background: "rgba(200,169,110,0.12)",
-            border: "1px solid rgba(200,169,110,0.2)",
-          }}
-        >
-          Stories
-        </Link>
-      </div>
 
       {/* Modals */}
       {selectedStory && (

@@ -1,33 +1,46 @@
 "use client"
 
+import { useState } from "react"
+
 export default function ShareButton({ name, avgRating }: { name: string; avgRating: string | null }) {
+  const [copied, setCopied] = useState(false)
+
   async function handleShare() {
     const url = window.location.href
     const text = avgRating
       ? `Check out ${name}'s faculty rating on Rate My Faculty — ${avgRating}/5 ⭐`
-      : `Rate ${name} on Rate My Faculty — SRMIST's anonymous faculty review platform`
+      : `Rate ${name} on Rate My Faculty — India's anonymous campus review platform`
 
     if (navigator.share) {
       try {
         await navigator.share({ title: `${name} — Rate My Faculty`, text, url })
-      } catch (e) {
+      } catch {
         // user cancelled
       }
     } else {
-      await navigator.clipboard.writeText(url)
-      alert("Link copied to clipboard!")
+      try {
+        await navigator.clipboard.writeText(url)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2500)
+      } catch {
+        // clipboard unavailable
+      }
     }
   }
 
   return (
     <button
       onClick={handleShare}
-      className="flex-1 border border-gray-700 text-gray-300 text-center font-bold py-3 rounded-xl hover:border-gray-500 hover:text-white transition flex items-center justify-center gap-2"
+      aria-label={copied ? "Link copied to clipboard" : `Share ${name}'s profile`}
+      className="flex-1 liquid-glass-pill hover:border-cyan-400/40 text-cyan-300 hover:text-white text-center font-semibold py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-      </svg>
-      Share
+      <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+        share
+      </span>
+      <span className="text-[13px]">{copied ? "Copied!" : "Share"}</span>
+      <span role="status" aria-live="polite" className="sr-only">
+        {copied ? "Link copied to clipboard" : ""}
+      </span>
     </button>
   )
 }
